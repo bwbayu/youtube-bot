@@ -1,0 +1,9 @@
+fastapi[all]
+uvicorn
+requests
+redis
+httpx
+python-dotenv
+sqlalchemy
+psycopg2
+pyjwt
