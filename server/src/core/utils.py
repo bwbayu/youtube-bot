@@ -1,3 +1,4 @@
+# src/core/utils.py
 import hashlib
 
 def hash_refresh_token(token: str) -> str:
