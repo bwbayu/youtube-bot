@@ -11,3 +11,4 @@ services:
 
 volumes:
   redis-data:
+# enter cli : docker exec -it redis-server redis-cli

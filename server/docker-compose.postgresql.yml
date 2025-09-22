@@ -1,5 +1,5 @@
 services:
-  db:
+  postgres:
     image: postgres:latest
     restart: always
     environment:
@@ -13,3 +13,4 @@ services:
 
 volumes:
   db_data:
+# docker exec -it server-postgres-1 psql -U root -d botjudol
