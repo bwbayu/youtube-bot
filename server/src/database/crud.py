@@ -18,10 +18,10 @@ def store_refresh_token(db: Session, refresh_token_data: dict):
     """
     save refresh token data for each user
     """
-    # check refresh token data based on user id and session id
+    # check refresh token data based on user id
     existing = db.query(RefreshToken).filter_by(
         user_id=refresh_token_data["user_id"],
-        session_id=refresh_token_data["session_id"]
+        # session_id=refresh_token_data["session_id"]
     ).first()
 
     if existing:
@@ -29,6 +29,7 @@ def store_refresh_token(db: Session, refresh_token_data: dict):
         # update refresh token and expires_at
         existing.refresh_token_encrypted = refresh_token_data["refresh_token_encrypted"]
         existing.expires_at = refresh_token_data["expires_at"]
+        existing.session_id = refresh_token_data["session_id"]
     else:
         # refresh token data doesn't exist
         refresh_token_obj = RefreshToken(**refresh_token_data)
@@ -43,7 +44,7 @@ def update_session_id(db: Session, user_id: str, old_session_id: str, new_sessio
     token_data = db.query(RefreshToken).filter_by(user_id=user_id, session_id=old_session_id).first()
     if token_data:
         token_data.session_id = new_session_id
-        token_data.expires_at = datetime.utcnow() + timedelta(days=7)
+        token_data.expires_at = datetime.now() + timedelta(days=7)
         db.commit()
 
 def get_refresh_token_by_session(db: Session, session_id: str):

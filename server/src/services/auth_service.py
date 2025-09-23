@@ -24,7 +24,11 @@ async def get_channel_info(access_token: str):
                 logger.warning(f"Failed to get channel info: {response.text}")
                 return None
 
-            item = response.json().get("items", [])[0]
+            items = response.json().get("items", [])
+            if not items:
+                return None
+
+            item = items[0]
             return {
                 "channel_id": item.get("id"),
                 "playlist_id": item["contentDetails"]["relatedPlaylists"]["uploads"],
@@ -52,6 +56,7 @@ async def handle_auth_callback(session_data: dict, db):
 
     # Create Redis session
     try:
+        print("create session auth service")
         session_id = create_session({
             "user_id": user_info['user_id'],
             "access_token": tokens['access_token']

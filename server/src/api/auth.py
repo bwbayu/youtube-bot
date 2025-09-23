@@ -10,15 +10,23 @@ import httpx, urllib.parse, os
 import logging
 
 logger = logging.getLogger(__name__)
-
 router = APIRouter()
 CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("REDIRECT_URI", "http://localhost:8000/auth/callback")
 SCOPE = "openid email profile https://www.googleapis.com/auth/youtube.readonly"
+SESSION_TTL = 3600
 
-@router.get("/login")
-async def login():
+@router.get("/login", name='login')
+async def login(request: Request):
+    # check session
+    session_id = request.cookies.get("session_id")
+    session_data = get_session(session_id) if session_id else None
+
+    if session_data:
+        # redirect to dashboard if still have session
+        return RedirectResponse("http://localhost:5173/dashboard")
+    
     state = create_session({"status": True}, 300)
     auth_url = (
         "https://accounts.google.com/o/oauth2/v2/auth"
@@ -68,8 +76,15 @@ async def callback(request: Request, db: Session = Depends(get_db)):
         session_id, _ = await handle_auth_callback({"tokens": tokens}, db)
 
         # TODO_PROD: change secure to True when deploying
-        response = RedirectResponse("http://localhost:5173/home")
-        response.set_cookie("session_id", session_id, httponly=True, secure=False)
+        response = RedirectResponse("http://localhost:5173/dashboard")
+        response.set_cookie(
+            "session_id", 
+            session_id, 
+            httponly=True, 
+            secure=False, 
+            # max_age=SESSION_TTL, 
+            # expires=SESSION_TTL
+            )
         return response
     
     except HTTPException as http_exc:
