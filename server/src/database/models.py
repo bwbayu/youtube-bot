@@ -23,5 +23,5 @@ class RefreshToken(Base):
     session_id = Column(String, nullable=False)
     user_id = Column(String, ForeignKey("users.user_id"), nullable=False)
     # QUESTION: refresh token hash/encrypt/plain
-    refresh_token_hash = Column(String, nullable=False)
+    refresh_token_encrypted = Column(String, nullable=False)
     expires_at = Column(DateTime)
