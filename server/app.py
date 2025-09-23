@@ -1,9 +1,11 @@
 # src/main.py
-from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from src.api import auth
-from src.database.models import Base
+from fastapi import FastAPI
+
 from src.database.init import engine, init_db, SessionLocal
+from src.database.models import Base
+from src.api import auth
+from src.middleware.require_login import RequireLoginMiddleware
 
 # lifespan context manager: open and close db connection
 @asynccontextmanager
@@ -22,6 +24,8 @@ async def lifespan(app: FastAPI):
     del app.state.db
 
 app = FastAPI(lifespan=lifespan)
+# Middleware
+app.add_middleware(RequireLoginMiddleware)
 
 # Routers
 app.include_router(auth.router, prefix="/auth")
