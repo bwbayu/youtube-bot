@@ -1,9 +1,9 @@
 # src/api/auth.py
 from src.core.session import create_session, get_session, delete_session
-from src.services.auth_service import handle_auth_callback
+from src.services.auth_service import handle_auth_callback, delete_session_data
 from src.database.init import get_db
 
-from fastapi import APIRouter, Request, Depends, HTTPException
+from fastapi import APIRouter, Request, Depends, HTTPException, Response
 from fastapi.responses import RedirectResponse, JSONResponse
 from sqlalchemy.orm import Session
 import httpx, urllib.parse, os
@@ -15,7 +15,7 @@ CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("REDIRECT_URI", "http://localhost:8000/auth/callback")
 SCOPE = "openid email profile https://www.googleapis.com/auth/youtube.readonly"
-SESSION_TTL = 3600
+COOKIE_TTL = 3600 * 24 * 7
 
 @router.get("/login", name='login')
 async def login(request: Request):
@@ -82,8 +82,8 @@ async def callback(request: Request, db: Session = Depends(get_db)):
             session_id, 
             httponly=True, 
             secure=False, 
-            # max_age=SESSION_TTL, 
-            # expires=SESSION_TTL
+            max_age=COOKIE_TTL, 
+            expires=COOKIE_TTL
             )
         return response
     
@@ -94,3 +94,32 @@ async def callback(request: Request, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Unexpected error in /callback: {str(e)}", exc_info=True)
         return JSONResponse(status_code=500, content={"error": "Internal Server Error"})
+    
+@router.post("/logout")
+async def logout(request: Request, response: Response, db: Session = Depends(get_db)):
+    """
+    delete cookie, redis session, and refresh token in postgresql. also request revoke token access to google
+    """
+    session_id = request.cookies.get("session_id")
+
+    if session_id:
+        status, message = await delete_session_data(db, session_id, response)
+    else:
+        status, message = False, "No session_id found in cookie."
+
+    # reuse response from parameter
+    response.status_code = 200 if status else 400
+    response.media_type = "application/json"
+    response.body = JSONResponse({
+        "logout_status": status,
+        "message": message
+    }).body
+    return response
+
+@router.post("/refresh")
+async def refresh_access_token(request: Request, db: Session = Depends(get_db)):
+    """
+    request new access token using refresh token in the middle of requesting to resource/google
+    """
+    # get session from cookie
+    session_id = request.cookies.get("session_id")

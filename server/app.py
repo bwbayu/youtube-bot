@@ -13,15 +13,11 @@ from src.api import auth
 async def lifespan(app: FastAPI):
     print("Application startup: Connecting to database...")
     init_db(Base)
-
-    # simpan session factory di state app
     app.state.db = SessionLocal
-
     yield
-
     # Shutdown
     print("Application shutdown: Closing database connections...")
-    engine.dispose()  # penting untuk release pool
+    engine.dispose()
     del app.state.db
 
 app = FastAPI(lifespan=lifespan)

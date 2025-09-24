@@ -9,6 +9,7 @@ def save_user(db: Session, user_data: UserCreate):
     create new user if not available
     """
     user = db.query(User).filter_by(user_id=user_data.user_id).first()
+    # QUESTION: what if data doesn't exist
     if not user:
         user = User(**user_data.model_dump())
         db.add(user)
@@ -42,6 +43,7 @@ def update_session_id(db: Session, user_id: str, old_session_id: str, new_sessio
     update session id on refresh token table when session is expired
     """
     token_data = db.query(RefreshToken).filter_by(user_id=user_id, session_id=old_session_id).first()
+    # QUESTION: what if data doesn't exist
     if token_data:
         token_data.session_id = new_session_id
         token_data.expires_at = datetime.now() + timedelta(days=7)
@@ -51,4 +53,15 @@ def get_refresh_token_by_session(db: Session, session_id: str):
     """
     get refresh token data by session id
     """
+    # QUESTION: what if data doesn't exist
     return db.query(RefreshToken).filter_by(session_id=session_id).first()
+
+def delete_refresh_token_by_session(db: Session, session_id: str):
+    """
+    delete refresh token data by session id when user logout
+    """
+    ref_token_data = db.query(RefreshToken).filter_by(session_id=session_id).first()
+    # QUESTION: what if data doesn't exist
+    if(ref_token_data):
+        db.delete(ref_token_data)
+        db.commit()

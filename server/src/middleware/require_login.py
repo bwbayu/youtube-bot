@@ -28,7 +28,7 @@ def get_sync_db():
 PUBLIC_PATHS = ["/health",
                 "/auth/login", "/auth/callback", 
                 ]
-SESSION_TTL = 3600
+COOKIE_TTL = 3600 * 24 * 7
 
 class RequireLoginMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -89,8 +89,8 @@ class RequireLoginMiddleware(BaseHTTPMiddleware):
                     new_session_id, 
                     httponly=True, 
                     secure=False, 
-                    # max_age=SESSION_TTL, 
-                    # expires=SESSION_TTL
+                    max_age=COOKIE_TTL, 
+                    expires=COOKIE_TTL
                     )
                 return response
             except Exception as e:
