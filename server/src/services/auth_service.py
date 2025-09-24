@@ -5,6 +5,7 @@ from src.core.utils import encrypt_token, decrypt_token
 from src.schemas.user import UserCreate
 
 from fastapi import HTTPException, Response
+from fastapi.responses import JSONResponse
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
@@ -155,41 +156,52 @@ async def revoke_token(decrypted_token: str) -> bool:
         return False
 
 async def renew_access_token(decrypted_refresh_token: str):
-    # TODO: add try catch
-    async with httpx.AsyncClient() as client:
-        token_res = await client.post(
-            "https://oauth2.googleapis.com/token",
-            data={
-                "client_id": os.getenv("GOOGLE_CLIENT_ID"),
-                "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
-                "refresh_token": decrypted_refresh_token,
-                "grant_type": "refresh_token",
-            },
-            headers={"Content-Type": "application/x-www-form-urlencoded"}
-        )
+    try:
+        async with httpx.AsyncClient() as client:
+            token_res = await client.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+                    "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
+                    "refresh_token": decrypted_refresh_token,
+                    "grant_type": "refresh_token",
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"}
+            )
 
-        return token_res
+        if token_res.status_code != 200:
+            logger.warning(f"Failed to refresh access token: {token_res.text}")
+            return None
+
+        return token_res.json().get("access_token")
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error while refreshing token: {e}", exc_info=True)
+        return None
+
+    except Exception as e:
+        logger.error(f"Unexpected error while refreshing token: {e}", exc_info=True)
+        return None
 
 async def handle_refresh_access_token(db: Session, session_id: str):
+    # TODO_LATER: CHECK FUNCTIONALITY
     # session data not exist
     if not session_id:
-        return {"error": "No session cookie"}, 401
+        return JSONResponse({"error": "No session cookie"}, status_code=401)
     
     # get refresh token data
     token_data = get_refresh_token_by_session(db, session_id)
 
     if not token_data or token_data.expires_at < datetime.now():
-        return {"error": "Refresh token expired"}, 401
+        return JSONResponse({"error": "Refresh token expired"}, status_code=401)
     
     try:
         decrypted_refresh_token = decrypt_token(token_data.refresh_token_encrypted)
         # request new access token using refresh token
-        renew_acc_token_res = renew_access_token(decrypted_refresh_token)
+        new_access_token = await renew_access_token(decrypted_refresh_token)
 
-        if renew_acc_token_res.status_code != 200:
-            return {"error": "Failed to refresh token"}, 401
-        
-        new_access_token = renew_acc_token_res.json()["access_token"]
+        if not new_access_token:
+            return JSONResponse({"error": "Failed to refresh token"}, status_code=401)
         
         # create new session using new access token
         new_session_id = create_session({
@@ -216,4 +228,4 @@ async def handle_refresh_access_token(db: Session, session_id: str):
         return response
     except Exception as e:
         logger.error(f"Refresh failed: {e}", exc_info=True)
-        return {"error": "Internal error"}, 500
+        return JSONResponse({"error": "Internal error"}, status_code=500)
