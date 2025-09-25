@@ -13,7 +13,6 @@ async def save_user(db: AsyncSession, user_data: UserCreate):
     query = select(User).filter_by(user_id=user_data.user_id)
     result = await db.execute(query)
     user = result.scalar_one_or_none()
-    # QUESTION: what if data doesn't exist
     if not user:
         user = User(**user_data.model_dump())
         db.add(user)
@@ -46,18 +45,20 @@ async def update_session_id(db: AsyncSession, user_id: str, old_session_id: str,
     """
     stmt = select(RefreshToken).filter_by(user_id=user_id, session_id=old_session_id)
     result = await db.execute(stmt)
-    token_data = result.scalar_one_or_none()    
-    # QUESTION: what if data doesn't exist
-    if token_data:
-        token_data.session_id = new_session_id
-        token_data.expires_at = datetime.now() + timedelta(days=7)
-        await db.commit()
+    token_data = result.scalar_one_or_none()
+
+    if not token_data:
+        return False
+
+    token_data.session_id = new_session_id
+    token_data.expires_at = datetime.now() + timedelta(days=7)
+    await db.commit()
+    return True
 
 async def get_refresh_token_by_session(db: AsyncSession, session_id: str):
     """
     get refresh token data by session id
     """
-    # QUESTION: what if data doesn't exist
     stmt = select(RefreshToken).filter_by(session_id=session_id)
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
@@ -68,8 +69,7 @@ async def delete_refresh_token_by_session(db: AsyncSession, session_id: str):
     """
     stmt = select(RefreshToken).filter_by(session_id=session_id)
     result = await db.execute(stmt)
-    ref_token = result.scalar_one_or_none()    
-    # QUESTION: what if data doesn't exist
+    ref_token = result.scalar_one_or_none()
     if ref_token:
         await db.delete(ref_token)
         await db.commit()

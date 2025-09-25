@@ -24,12 +24,7 @@ COOKIE_TTL = 3600 * 24 * 7
 
 class RequireLoginMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        print("masuk middleware:", request.url.path)
-        session_id = request.cookies.get("session_id")
-        print("cookie: ", session_id)
-
         if request.url.path in PUBLIC_PATHS and not session_id:
-            print("skip url")
             return await call_next(request)
         
         # get session id from cookie
@@ -54,6 +49,7 @@ class RequireLoginMiddleware(BaseHTTPMiddleware):
                     token_data = await get_refresh_token_by_session(db, session_id)
                     
                     if not token_data or token_data.expires_at < datetime.now():
+                        # handle refresn token data doesn't exist
                         login_url = request.url_for("login") # route name
                         return RedirectResponse(url=login_url)
                     
@@ -62,15 +58,18 @@ class RequireLoginMiddleware(BaseHTTPMiddleware):
                     new_access_token = await self.refresh_access_token(decrypted_token)
 
                     # create new session using new access token
-                    print("create session middleware")
                     new_session_id = await create_session({
                         "user_id": token_data.user_id,
                         "access_token": new_access_token
                     }, 3600)
 
-                    print("update session id refresh token")
-                    await update_session_id(db, token_data.user_id, session_id, new_session_id)
+                    success = await update_session_id(db, token_data.user_id, session_id, new_session_id)
 
+                    if not success:
+                        # refresh token data doesn't exist
+                        logger.error("Failed to update session_id in refresh token store")
+                        return JSONResponse({"error": "Failed to update session"}, status_code=500)
+                    
                     # forward the request with data user_id in the request
                     request.state.user_id = token_data.user_id
 

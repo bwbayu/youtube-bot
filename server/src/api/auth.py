@@ -22,13 +22,10 @@ async def login(request: Request):
     # check session
     session_id = request.cookies.get("session_id")
     session_data = await get_session(session_id) if session_id else None
-    print("check session data: ", session_data)
     if session_data:
         # redirect to dashboard if still have session
-        print("redirect to dashboard (login)")
         return RedirectResponse("http://localhost:5173/dashboard")
     
-    print("create auth code")
     state = await create_session({"status": True}, 300)
     auth_url = (
         "https://accounts.google.com/o/oauth2/v2/auth"
@@ -56,8 +53,6 @@ async def callback(request: Request, db: AsyncSession = Depends(get_async_db)):
             raise HTTPException(status_code=400, detail="Invalid state")
         
         await delete_session(state)
-        print("delete auth code")
-        print("exchange auth code to token")
         # Exchange code for tokens
         async with httpx.AsyncClient() as client:
             token_res = await client.post("https://oauth2.googleapis.com/token", data={

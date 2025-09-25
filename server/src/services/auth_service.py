@@ -62,7 +62,6 @@ async def handle_auth_callback(session_data: dict, db):
 
     # Create Redis session
     try:
-        print("create session auth service")
         session_id = await create_session({
             "user_id": user_info['user_id'],
             "access_token": tokens['access_token']
@@ -93,7 +92,7 @@ async def handle_auth_callback(session_data: dict, db):
             "refresh_token_encrypted": encrypt_token(tokens['refresh_token']),
             "expires_at": datetime.now() + timedelta(seconds=tokens.get("refresh_token_expires_in", 604800))
         }
-        print("save refresh token")
+
         await store_refresh_token(db, refresh_token_data)
     except Exception as e:
         logger.error(f"Failed to store refresh token: {e}", exc_info=True)
@@ -125,6 +124,7 @@ async def delete_session_data(db: AsyncSession, session_id: str, response: Respo
                 logger.warning(message)
                 return False, message
         else:
+            # handle refresn token data doesn't exist
             message = "No refresh token found for session, but session deleted."
             logger.warning(message)
             return True, message
@@ -194,6 +194,7 @@ async def handle_refresh_access_token(db: AsyncSession, session_id: str):
     token_data = await get_refresh_token_by_session(db, session_id)
 
     if not token_data or token_data.expires_at < datetime.now():
+        # handle refresn token data doesn't exist
         return JSONResponse({"error": "Refresh token expired"}, status_code=401)
     
     try:
@@ -211,8 +212,12 @@ async def handle_refresh_access_token(db: AsyncSession, session_id: str):
         }, 3600)
 
         # update session id in refresh token data
-        await update_session_id(db, token_data.user_id, session_id, new_session_id)
-
+        success = await update_session_id(db, token_data.user_id, session_id, new_session_id)
+        
+        if not success:
+            # refresh token data doesn't exist
+            logger.error("Failed to update session_id in refresh token store")
+            return JSONResponse({"error": "Failed to update session"}, status_code=500)
         # create response
         response = JSONResponse({
             "message": "Session refreshed"

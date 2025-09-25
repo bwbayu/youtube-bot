@@ -23,6 +23,7 @@ async def get_user(request: Request, db: AsyncSession = Depends(get_async_db)):
     user = await get_user_data(db, user_id)
 
     if isinstance(user, JSONResponse):
+        # if user not found
         return user
 
     # construct user data
