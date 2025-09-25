@@ -4,10 +4,10 @@ from src.core.session import create_session, delete_session
 from src.core.utils import encrypt_token, decrypt_token
 from src.schemas.user import UserCreate
 
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, Response
 from fastapi.responses import JSONResponse
 from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 import logging
 import httpx
@@ -63,7 +63,7 @@ async def handle_auth_callback(session_data: dict, db):
     # Create Redis session
     try:
         print("create session auth service")
-        session_id = create_session({
+        session_id = await create_session({
             "user_id": user_info['user_id'],
             "access_token": tokens['access_token']
         }, tokens['expires_in'])
@@ -80,7 +80,7 @@ async def handle_auth_callback(session_data: dict, db):
         raise HTTPException(status_code=500, detail="Invalid channel info")
     
     try:
-        save_user(db, user_data)
+        await save_user(db, user_data)
     except Exception as e:
         logger.error(f"Failed to save user: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to save user")
@@ -93,7 +93,8 @@ async def handle_auth_callback(session_data: dict, db):
             "refresh_token_encrypted": encrypt_token(tokens['refresh_token']),
             "expires_at": datetime.now() + timedelta(seconds=tokens.get("refresh_token_expires_in", 604800))
         }
-        store_refresh_token(db, refresh_token_data)
+        print("save refresh token")
+        await store_refresh_token(db, refresh_token_data)
     except Exception as e:
         logger.error(f"Failed to store refresh token: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to store refresh token")
@@ -101,19 +102,19 @@ async def handle_auth_callback(session_data: dict, db):
 
     return session_id, user_data
 
-async def delete_session_data(db: Session, session_id: str, response: Response):
+async def delete_session_data(db: AsyncSession, session_id: str, response: Response):
     try:
         # delete session in redis
-        delete_session(session_id)
+        await delete_session(session_id)
 
         # delete cookie data
         response.delete_cookie("session_id")
 
         # delete refresh token data
-        token_data = get_refresh_token_by_session(db, session_id)
+        token_data = await get_refresh_token_by_session(db, session_id)
         if token_data:
             decrypted_token = decrypt_token(token_data.refresh_token_encrypted)
-            delete_refresh_token_by_session(db, session_id)
+            await delete_refresh_token_by_session(db, session_id)
 
             # request revoke refresh token
             success = await revoke_token(decrypted_token)
@@ -183,14 +184,14 @@ async def renew_access_token(decrypted_refresh_token: str):
         logger.error(f"Unexpected error while refreshing token: {e}", exc_info=True)
         return None
 
-async def handle_refresh_access_token(db: Session, session_id: str):
+async def handle_refresh_access_token(db: AsyncSession, session_id: str):
     # TODO_LATER: CHECK FUNCTIONALITY
     # session data not exist
     if not session_id:
         return JSONResponse({"error": "No session cookie"}, status_code=401)
     
     # get refresh token data
-    token_data = get_refresh_token_by_session(db, session_id)
+    token_data = await get_refresh_token_by_session(db, session_id)
 
     if not token_data or token_data.expires_at < datetime.now():
         return JSONResponse({"error": "Refresh token expired"}, status_code=401)
@@ -204,19 +205,18 @@ async def handle_refresh_access_token(db: Session, session_id: str):
             return JSONResponse({"error": "Failed to refresh token"}, status_code=401)
         
         # create new session using new access token
-        new_session_id = create_session({
+        new_session_id = await create_session({
             "user_id": token_data.user_id,
             "access_token": new_access_token,
         }, 3600)
 
         # update session id in refresh token data
-        update_session_id(db, token_data.user_id, session_id, new_session_id)
+        await update_session_id(db, token_data.user_id, session_id, new_session_id)
 
         # create response
-        response = Response(
-            content={
-                "message": "Session refreshed"
-                })
+        response = JSONResponse({
+            "message": "Session refreshed"
+        })
         response.set_cookie(
             key="session_id",
             value=new_session_id,

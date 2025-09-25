@@ -5,6 +5,7 @@ redis
 httpx
 python-dotenv
 sqlalchemy
-psycopg2
+# psycopg2
 pyjwt
 python-jose[cryptography]
+asyncpg

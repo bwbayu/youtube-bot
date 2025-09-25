@@ -2,28 +2,20 @@
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from datetime import datetime
-from contextlib import contextmanager
-from dotenv import load_dotenv
 from fastapi import Request
-import httpx
-import os
-import logging
+import httpx, os, logging
+from dotenv import load_dotenv
 
-from src.database.crud import update_session_id, get_refresh_token_by_session
+from src.database.init import get_async_db
+from src.database.crud import (
+    update_session_id, get_refresh_token_by_session
+)
 from src.core.session import get_session, create_session
-from src.database.init import SessionLocal
 from src.core.utils import decrypt_token
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-@contextmanager
-def get_sync_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 PUBLIC_PATHS = ["/health",
                 "/auth/login", "/auth/callback", 
@@ -37,6 +29,7 @@ class RequireLoginMiddleware(BaseHTTPMiddleware):
         print("cookie: ", session_id)
 
         if request.url.path in PUBLIC_PATHS and not session_id:
+            print("skip url")
             return await call_next(request)
         
         # get session id from cookie
@@ -46,7 +39,7 @@ class RequireLoginMiddleware(BaseHTTPMiddleware):
         if session_id:
             # get session data from redis
             try:
-                session_data = get_session(session_id)
+                session_data = await get_session(session_id)
             except Exception as e:
                 logger.error(f"Redis session error: {e}", exc_info=True)
             
@@ -57,42 +50,42 @@ class RequireLoginMiddleware(BaseHTTPMiddleware):
 
             # Session data not found, try to use refresh token from DB
             try:
-                with get_sync_db() as db:
-                    token_data = get_refresh_token_by_session(db, session_id)
+                async for db in get_async_db():
+                    token_data = await get_refresh_token_by_session(db, session_id)
                     
-                if not token_data or token_data.expires_at < datetime.now():
-                    login_url = request.url_for("login") # route name
-                    return RedirectResponse(url=login_url)
-                
-                # request new access token using refresh token
-                decrypted_token = decrypt_token(token_data.refresh_token_encrypted)
-                new_access_token = await self.refresh_access_token(decrypted_token)
+                    if not token_data or token_data.expires_at < datetime.now():
+                        login_url = request.url_for("login") # route name
+                        return RedirectResponse(url=login_url)
+                    
+                    # request new access token using refresh token
+                    decrypted_token = decrypt_token(token_data.refresh_token_encrypted)
+                    new_access_token = await self.refresh_access_token(decrypted_token)
 
-                # create new session using new access token
-                print("create session middleware")
-                new_session_id = create_session({
-                    "user_id": token_data.user_id,
-                    "access_token": new_access_token
-                }, 3600)
+                    # create new session using new access token
+                    print("create session middleware")
+                    new_session_id = await create_session({
+                        "user_id": token_data.user_id,
+                        "access_token": new_access_token
+                    }, 3600)
 
-                update_session_id(db, token_data.user_id, session_id, new_session_id)
+                    print("update session id refresh token")
+                    await update_session_id(db, token_data.user_id, session_id, new_session_id)
 
-                # forward the request with data user_id in the request
-                request.state.user_id = token_data.user_id
-                response = await call_next(request)
+                    # forward the request with data user_id in the request
+                    request.state.user_id = token_data.user_id
 
-                # set new cookie
-                # TODO_PROD: change secure to True when deploying
-                response = RedirectResponse("http://localhost:5173/dashboard")
-                response.set_cookie(
-                    "session_id", 
-                    new_session_id, 
-                    httponly=True, 
-                    secure=False, 
-                    max_age=COOKIE_TTL, 
-                    expires=COOKIE_TTL
-                    )
-                return response
+                    # set new cookie
+                    # TODO_PROD: change secure to True when deploying
+                    response = RedirectResponse("http://localhost:5173/dashboard")
+                    response.set_cookie(
+                        "session_id", 
+                        new_session_id, 
+                        httponly=True, 
+                        secure=False, 
+                        max_age=COOKIE_TTL, 
+                        expires=COOKIE_TTL
+                        )
+                    return response
             except Exception as e:
                 logger.error(f"Unhandled middleware error: {e}", exc_info=True)
                 return JSONResponse({"error": "Unhandled error"}, status_code=500)

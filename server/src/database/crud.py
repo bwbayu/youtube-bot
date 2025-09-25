@@ -1,32 +1,34 @@
 # src/database/crud.py
-from sqlalchemy.orm import Session
-from src.schemas.user import UserCreate
-from src.database.models import User, RefreshToken
+from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta
+from sqlalchemy.future import select
 
-def save_user(db: Session, user_data: UserCreate):
+from src.database.models import User, RefreshToken
+from src.schemas.user import UserCreate
+
+async def save_user(db: AsyncSession, user_data: UserCreate):
     """
-    create new user if not available
+    Create new user if not exists
     """
-    user = db.query(User).filter_by(user_id=user_data.user_id).first()
+    query = select(User).filter_by(user_id=user_data.user_id)
+    result = await db.execute(query)
+    user = result.scalar_one_or_none()
     # QUESTION: what if data doesn't exist
     if not user:
         user = User(**user_data.model_dump())
         db.add(user)
-        db.commit()
+        await db.commit()
 
-def store_refresh_token(db: Session, refresh_token_data: dict):
+async def store_refresh_token(db: AsyncSession, refresh_token_data: dict):
     """
     save refresh token data for each user
     """
     # check refresh token data based on user id
-    existing = db.query(RefreshToken).filter_by(
-        user_id=refresh_token_data["user_id"],
-        # session_id=refresh_token_data["session_id"]
-    ).first()
+    stmt = select(RefreshToken).filter_by(user_id=refresh_token_data["user_id"])
+    result = await db.execute(stmt)
+    existing = result.scalar_one_or_none()
 
     if existing:
-        # user id and session id still the same
         # update refresh token and expires_at
         existing.refresh_token_encrypted = refresh_token_data["refresh_token_encrypted"]
         existing.expires_at = refresh_token_data["expires_at"]
@@ -36,32 +38,38 @@ def store_refresh_token(db: Session, refresh_token_data: dict):
         refresh_token_obj = RefreshToken(**refresh_token_data)
         db.add(refresh_token_obj)
 
-    db.commit()
+    await db.commit()
 
-def update_session_id(db: Session, user_id: str, old_session_id: str, new_session_id: str):
+async def update_session_id(db: AsyncSession, user_id: str, old_session_id: str, new_session_id: str):
     """
     update session id on refresh token table when session is expired
     """
-    token_data = db.query(RefreshToken).filter_by(user_id=user_id, session_id=old_session_id).first()
+    stmt = select(RefreshToken).filter_by(user_id=user_id, session_id=old_session_id)
+    result = await db.execute(stmt)
+    token_data = result.scalar_one_or_none()    
     # QUESTION: what if data doesn't exist
     if token_data:
         token_data.session_id = new_session_id
         token_data.expires_at = datetime.now() + timedelta(days=7)
-        db.commit()
+        await db.commit()
 
-def get_refresh_token_by_session(db: Session, session_id: str):
+async def get_refresh_token_by_session(db: AsyncSession, session_id: str):
     """
     get refresh token data by session id
     """
     # QUESTION: what if data doesn't exist
-    return db.query(RefreshToken).filter_by(session_id=session_id).first()
+    stmt = select(RefreshToken).filter_by(session_id=session_id)
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
 
-def delete_refresh_token_by_session(db: Session, session_id: str):
+async def delete_refresh_token_by_session(db: AsyncSession, session_id: str):
     """
     delete refresh token data by session id when user logout
     """
-    ref_token_data = db.query(RefreshToken).filter_by(session_id=session_id).first()
+    stmt = select(RefreshToken).filter_by(session_id=session_id)
+    result = await db.execute(stmt)
+    ref_token = result.scalar_one_or_none()    
     # QUESTION: what if data doesn't exist
-    if(ref_token_data):
-        db.delete(ref_token_data)
-        db.commit()
+    if ref_token:
+        await db.delete(ref_token)
+        await db.commit()

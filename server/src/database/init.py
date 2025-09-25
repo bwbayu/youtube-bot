@@ -1,24 +1,28 @@
 # src/database/init.py
 import os
-from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 
 load_dotenv()
 
 DATABASE_URL = os.getenv("POSTGRESQL_URL")
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine = create_async_engine(DATABASE_URL)
+AsyncSessionLocal = sessionmaker(
+    bind=engine,
+    class_=AsyncSession, 
+    autocommit=False, 
+    autoflush=False, 
+    expire_on_commit=False
+    )
 
-def init_db(Base):
+async def init_db(Base):
     print("Creating tables if not exist...")
-    Base.metadata.create_all(bind=engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     print("Database schema initialized.")
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def get_async_db():
+    async with AsyncSessionLocal() as session:
+        yield session

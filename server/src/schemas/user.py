@@ -12,7 +12,6 @@ class UserCreate(BaseModel):
 
 # fetch user
 class UserResponse(BaseModel):
-    id: str
     user_id: str
     name: str
     email: EmailStr
