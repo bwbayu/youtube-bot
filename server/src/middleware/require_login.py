@@ -24,13 +24,13 @@ COOKIE_TTL = 3600 * 24 * 7
 
 class RequireLoginMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        if request.url.path in PUBLIC_PATHS and not session_id:
-            return await call_next(request)
-        
         # get session id from cookie
         session_id = request.cookies.get("session_id")
         session_data = None
-        
+
+        if request.url.path in PUBLIC_PATHS and not session_id:
+            return await call_next(request)
+                
         if session_id:
             # get session data from redis
             try:
@@ -41,6 +41,7 @@ class RequireLoginMiddleware(BaseHTTPMiddleware):
             if session_data:
                 # forward the request with data user_id in the request
                 request.state.user_id = session_data['user_id']
+                request.state.access_token = session_data['access_token']
                 return await call_next(request)
 
             # Session data not found, try to use refresh token from DB

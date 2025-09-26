@@ -17,6 +17,7 @@ class UserResponse(BaseModel):
     email: EmailStr
     channel_id: str
     custom_url: str
+    playlist_id: str
 
     class Config:
         orm_mode = True

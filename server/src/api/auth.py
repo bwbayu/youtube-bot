@@ -17,6 +17,7 @@ REDIRECT_URI = os.getenv("REDIRECT_URI", "http://localhost:8000/auth/callback")
 SCOPE = "openid email profile https://www.googleapis.com/auth/youtube.readonly"
 COOKIE_TTL = 3600 * 24 * 7
 
+# QUESTION: if session id in refresh token data and cookie different, just delete it, let user login again ?
 @router.get("/login", name='login')
 async def login(request: Request):
     # check session
