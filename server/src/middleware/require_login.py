@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 PUBLIC_PATHS = ["/health",
                 "/auth/login", "/auth/callback", 
                 ]
-COOKIE_TTL = 3600 * 24 * 7
+COOKIE_TTL = 3600 * 24 * 1
 
 class RequireLoginMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -70,9 +70,6 @@ class RequireLoginMiddleware(BaseHTTPMiddleware):
                         # refresh token data doesn't exist
                         logger.error("Failed to update session_id in refresh token store")
                         return JSONResponse({"error": "Failed to update session"}, status_code=500)
-                    
-                    # forward the request with data user_id in the request
-                    request.state.user_id = token_data.user_id
 
                     # set new cookie
                     # TODO_PROD: change secure to True when deploying

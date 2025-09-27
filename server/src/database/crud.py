@@ -51,7 +51,7 @@ async def update_session_id(db: AsyncSession, user_id: str, old_session_id: str,
         return False
 
     token_data.session_id = new_session_id
-    token_data.expires_at = datetime.now() + timedelta(days=7)
+    token_data.expires_at = datetime.now() + timedelta(days=1)
     await db.commit()
     return True
 

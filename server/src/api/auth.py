@@ -14,8 +14,9 @@ router = APIRouter()
 CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("REDIRECT_URI", "http://localhost:8000/auth/callback")
-SCOPE = "openid email profile https://www.googleapis.com/auth/youtube.readonly"
-COOKIE_TTL = 3600 * 24 * 7
+# SCOPE = "openid email profile https://www.googleapis.com/auth/youtube.readonly"
+SCOPE = "openid email profile https://www.googleapis.com/auth/youtube.force-ssl"
+COOKIE_TTL = 3600 * 24 * 1
 
 # QUESTION: if session id in refresh token data and cookie different, just delete it, let user login again ?
 @router.get("/login", name='login')

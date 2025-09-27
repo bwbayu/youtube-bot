@@ -16,7 +16,7 @@ import os
 
 load_dotenv()
 logger = logging.getLogger(__name__)
-COOKIE_TTL = 3600 * 24 * 7
+COOKIE_TTL = 3600 * 24 * 1
 
 async def get_channel_info(access_token: str):
     try:
@@ -90,7 +90,7 @@ async def handle_auth_callback(session_data: dict, db):
             "session_id": session_id,
             "user_id": user_info["user_id"],
             "refresh_token_encrypted": encrypt_token(tokens['refresh_token']),
-            "expires_at": datetime.now() + timedelta(seconds=tokens.get("refresh_token_expires_in", 604800))
+            "expires_at": datetime.now() + timedelta(days=1)
         }
 
         await store_refresh_token(db, refresh_token_data)
