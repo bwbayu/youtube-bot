@@ -2,6 +2,7 @@
 from src.database.crud_content import *
 from src.schemas.comment import CommentCreate
 
+from dateutil.parser import parse as parse_datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.responses import JSONResponse
 from fastapi import HTTPException
@@ -49,6 +50,7 @@ async def fetch_latest_video(playlist_id: str, access_token: str, max_result: in
     
 async def fetch_comments(video_id: str, access_token: str, last_fetch: datetime | None, max_result: int = 100):
     comments = []
+    prev_page_token = None
     params={
         "part": "snippet,replies",
         "videoId": video_id,
@@ -57,12 +59,12 @@ async def fetch_comments(video_id: str, access_token: str, last_fetch: datetime 
     }
 
     try:
-        async with httpx.AsyncClient as client:
+        async with httpx.AsyncClient() as client:
             while True:
                 res = await client.get(BASE_COMMENT_URL, 
-                                       params, 
+                                       params=params, 
                                        headers={"Authorization": f"Bearer {access_token}"})
-
+                
                 if res.status_code == 403:
                     raise HTTPException(403, "YouTube quota exceeded while fetching comments")
                 if res.status_code == 404:
@@ -70,35 +72,50 @@ async def fetch_comments(video_id: str, access_token: str, last_fetch: datetime 
                 
                 data = res.json()
                 for item in data.get("items", []):
+                    print("ITEM COMMENT: ", item)
                     comment = item["snippet"]["topLevelComment"]["snippet"]
+
+                    # Filter by last_fetch (top-level comment)
+                    published = parse_datetime(comment["publishedAt"])
+                    updated = parse_datetime(comment["updatedAt"])
+                    if last_fetch and max(published, updated) <= last_fetch:
+                        continue
+
                     comments.append(CommentCreate(
                         comment_id=item["id"],
                         video_id=video_id,
                         author_display_name=comment["authorDisplayName"],
                         text=comment["textDisplay"],
                         published_at=comment["publishedAt"],
-                        updated_at=comment["updatedAt"],
-                        moderation_status=comment["moderationStatus"]
+                        updated_at=comment["updatedAt"]
                     ))
 
                     # Add replies as flat comments
                     for reply in item.get("replies", {}).get("comments", []):
                         rs = reply["snippet"]
+                        # Filter by last_fetch
+                        published_r = parse_datetime(rs["publishedAt"])
+                        updated_r = parse_datetime(rs["updatedAt"])
+                        if last_fetch and max(published_r, updated_r) <= last_fetch:
+                            continue
+
                         comments.append(CommentCreate(
                             comment_id=reply["id"],
                             video_id=video_id,
                             author_display_name=rs["authorDisplayName"],
                             text=rs["textDisplay"],
                             published_at=rs["publishedAt"],
-                            updated_at=rs["updatedAt"],
-                            moderation_status=rs["moderationStatus"]
+                            updated_at=rs["updatedAt"]
                         ))
 
-                    if "nextPageToken" in data:
-                        params["pageToken"] = data["nextPageToken"]
-                    else:
-                        break
+                next_token = data.get("nextPageToken")
+                if not next_token or next_token == prev_page_token:
+                    break
 
+                prev_page_token = next_token
+                params["pageToken"] = next_token
+        
+        print("COMMENT DATA: ", comment)
         return comments
     except Exception as e:
         logger.error(f"Error in fetch_comments: {e}", exc_info=True)

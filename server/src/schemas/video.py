@@ -10,7 +10,7 @@ class VideoBase(BaseModel):
     title: str
     description: Optional[str] = None
     published_at: Optional[datetime] = None
-    last_fetch_comment: datetime
+    last_fetch_comment: Optional[datetime] = None
 
 class VideoCreate(VideoBase):
     # create video, no additional column
@@ -19,7 +19,12 @@ class VideoCreate(VideoBase):
 class VideoResponse(VideoBase):
     # fetch video, the rest column is inheritance
     class Config:
-        orm_mode = True
+        from_attributes = True
+
+class VideoFetchSummary(BaseModel):
+    video_id: str
+    comment_count: Optional[int] = None
+    error: Optional[str] = None
 
 class VideoListResponse(BaseModel):
     # list of fetch video

@@ -10,7 +10,6 @@ class CommentBase(BaseModel):
     text: str
     published_at: datetime
     updated_at: datetime
-    moderation_status: str
 
 class CommentCreate(CommentBase):
     # insert comment
@@ -26,7 +25,7 @@ class CommentResponse(CommentBase):
     is_judi: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class CommentListResponse(BaseModel):
     # list of fetch comment
