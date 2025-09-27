@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom";
+import { useFetchVideos } from "../api/useFetchVideos";
 
 type User = {
   user_id: string;
@@ -12,6 +13,8 @@ type User = {
 
 export const DashboardPage = () => {
   const [user, setUser] = useState<User | null>(null)
+  const [playlistId, setPlaylistId] = useState<string | null>(null)
+  const { videos, loading, error, refetch } = useFetchVideos(playlistId || "");
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -52,6 +55,7 @@ export const DashboardPage = () => {
         }
 
         setUser(data);
+        setPlaylistId(data.playlist_id);
       } else if (res.status === 401) {
         console.log("Unauthorized: user not logged in");
         navigate("/");
@@ -85,25 +89,48 @@ export const DashboardPage = () => {
 
       <main className="px-8 py-16">
         <h1 className="text-4xl font-bold text-green-400 mb-4">Dashboard</h1>
-        <p>
-          <strong>User ID:</strong>{" "}
-          {user?.user_id ? user.user_id : "Not logged in"}
-        </p>
-        <p>
-          <strong>Name:</strong> {user?.name}
-        </p>
-        <p>
-          <strong>Email:</strong> {user?.email}
-        </p>
-        <p>
-          <strong>Channel ID:</strong> {user?.channel_id}
-        </p>
-        <p>
-          <strong>Custom URL:</strong> {user?.custom_url}
-        </p>
-        <p>
-          <strong>Playlist ID:</strong> {user?.playlist_id}
-        </p>
+        {user ? (
+          <>
+            <p><strong>User ID:</strong> {user.user_id}</p>
+            <p><strong>Name:</strong> {user.name}</p>
+            <p><strong>Email:</strong> {user.email}</p>
+            <p><strong>Channel ID:</strong> {user.channel_id}</p>
+            <p><strong>Custom URL:</strong> {user.custom_url}</p>
+            <p><strong>Playlist ID:</strong> {user.playlist_id}</p>
+          </>
+        ) : (
+          <p>Loading user...</p>
+        )}
+        <div className="mt-10">
+          <h2 className="text-2xl font-semibold text-blue-400 mb-2">Video & Komentar</h2>
+
+          {loading && <p className="text-yellow-400">Mengambil data video dan komentar...</p>}
+          {error && <p className="text-red-500">Error: {error}</p>}
+
+          <ul className="space-y-2">
+            {videos.map((v) => (
+              <li key={v.video_id} className="border-b pb-2 border-gray-700">
+                <p className="text-lg">
+                  <strong>Video ID:</strong> {v.video_id}
+                </p>
+                {v.comment_count !== undefined ? (
+                  <p className="text-green-400">
+                    Komentar: {v.comment_count}
+                  </p>
+                ) : (
+                  <p className="text-red-400">Error: {v.error}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+
+          <button
+            onClick={refetch}
+            className="mt-6 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
+          >
+            Fetch Ulang Komentar
+          </button>
+        </div>
       </main>
     </div>
   )
