@@ -50,9 +50,7 @@ class RequireLoginMiddleware(BaseHTTPMiddleware):
                     token_data = await get_refresh_token_by_session(db, session_id)
                     
                     if not token_data or token_data.expires_at < datetime.now():
-                        # handle refresn token data doesn't exist
-                        login_url = request.url_for("login") # route name
-                        return RedirectResponse(url=login_url)
+                        return JSONResponse({"detail": "Unauthorized"}, status_code=401)
                     
                     # request new access token using refresh token
                     decrypted_token = decrypt_token(token_data.refresh_token_encrypted)
@@ -88,8 +86,7 @@ class RequireLoginMiddleware(BaseHTTPMiddleware):
                 return JSONResponse({"error": "Unhandled error"}, status_code=500)
         else:
             # there is no cookie and can't use refresh token to create new session
-            login_url = request.url_for("login") # route name
-            return RedirectResponse(url=login_url)
+            return JSONResponse({"detail": "Unauthorized"}, status_code=401)
 
     async def refresh_access_token(self, refresh_token: str):
         """

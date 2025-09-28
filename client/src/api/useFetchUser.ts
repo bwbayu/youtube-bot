@@ -25,6 +25,14 @@ export const useFetchUser = () => {
         credentials: "include", // send cookie
       });
 
+      if (res.status === 401) {
+        console.log("Unauthorized: user not logged in");
+        setUser(null);
+        setLoading(false);
+        navigate("/");
+        return;
+      }
+
       if (res.ok) {
         const data = await res.json();
 
@@ -35,10 +43,7 @@ export const useFetchUser = () => {
 
         setUser(data);
         setPlaylistId(data.playlist_id);
-      } else if (res.status === 401) {
-        console.log("Unauthorized: user not logged in");
-        navigate("/");
-      } else {
+      }  else {
         console.warn("Unhandled error:", res.status);
         setUser(null);
       }

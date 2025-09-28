@@ -7,9 +7,26 @@ import { useFetchUser } from "./api/useFetchUser";
 import { UserContext } from "./context/UserContext";
 
 function App() {
-  const { user } = useFetchUser();
+  const { user, loadingUser } = useFetchUser();
+
+  if (loadingUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+        <p>Loading...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    );
+  }
+
   return (
-    <>
     <UserContext.Provider value={user}>
       <Routes>
         <Route path="/" element={<HomePage />} />
@@ -18,7 +35,6 @@ function App() {
         <Route path="*" element={<NotFoundPage />} />  
       </Routes>      
     </UserContext.Provider>
-    </>
   );
 }
 

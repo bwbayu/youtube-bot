@@ -25,7 +25,6 @@ export const VideoDetailPage = () => {
   const { videoDetail, comments, loadingComment, errorComment, pagination, refetch } = useFetchComments(videoId || "", page, 10);
   const totalPages = Math.ceil(pagination.total / pagination.page_size);
   const [selected, setSelected] = useState<string[]>([]);
-  // TODO: handle global context sebelum login jadi error ke dashboardnya
   // TODO_BACKEND: refactor code dan error handling di BE dan FE nya
   const model_predict = () => {
     console.log("ML process");
