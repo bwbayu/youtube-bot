@@ -1,53 +1,30 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react"
+import { type VideoResponse } from "../api/useFetchComments";
 
-export type VideoFetchResult = {
-  video_id: string;
-  comment_count?: number;
-  error?: string;
-};
-
-export function useFetchVideos(playlistId: string) {
-  const [videos, setVideos] = useState<VideoFetchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export const useFetchVideos = (playlist_id: string, page = 1, page_size = 10) => {
+  const [videos, setVideos] = useState<VideoResponse[]>([])
+  const [loadingVideos, setLoading] = useState(true)
+  const [errorvideos, setError] = useState<string | null>(null)
 
   const fetchVideos = useCallback(async () => {
-    if (!playlistId) return;
-
     try {
-      setLoading(true);
-      const res = await fetch(
-        `http://localhost:8000/content/fetch-latest-videos?playlist_id=${playlistId}`,
-        {
-          method: "GET",
-          credentials: "include", // Kirim cookie session_id
-        }
-      );
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || "Gagal ambil video");
-      }
-
-      const data = await res.json();
-      setVideos(data);
-      setError(null);
-    } catch (err: unknown) {
-        if (err instanceof Error){
-            console.error("Fetch video gagal:", err);
-            setError(err.message || "Unknown error");
-        } else{
-            console.error("Fetch video gagal:", err);
-            setError("Unexpected error: " + err);
-        }
+      setLoading(true)
+      const res = await fetch(`http://localhost:8000/content/user_videos?playlist_id=${playlist_id}&page=${page}&page_size=${page_size}`, {
+        credentials: "include",
+      })
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`)
+      const data = await res.json()
+      setVideos(data.items || [])
+    } catch (err) {
+      setError((err as Error).message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, [playlistId]);
+  }, [playlist_id, page, page_size])
 
   useEffect(() => {
-    fetchVideos();
-  }, [fetchVideos]);
+    if (playlist_id) fetchVideos()
+  }, [playlist_id, fetchVideos])
 
-  return { videos, loading, error, refetch: fetchVideos };
+  return { videos, loadingVideos, errorvideos, refetch: fetchVideos }
 }
