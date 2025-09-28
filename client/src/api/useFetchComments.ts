@@ -18,6 +18,7 @@ export type CommentResponse = {
     published_at: Date;
     updated_at: Date;
     is_judi: boolean;
+    confidence: number;
 }
 
 export const useFetchComments = (videoId: string, page = 1, page_size = 10) => {
@@ -64,5 +65,5 @@ export const useFetchComments = (videoId: string, page = 1, page_size = 10) => {
     fetchData()
   }, [fetchData])
 
-  return { comments, videoDetail, loadingComment, errorComment, pagination }
+  return { comments, videoDetail, loadingComment, errorComment, pagination, refetch: fetchData }
 }

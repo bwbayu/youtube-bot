@@ -22,10 +22,11 @@ export const VideoDetailPage = () => {
   const { videoId } = useParams();
   const [page, setPage] = useState(1);
   const user = useUser();
-  const { videoDetail, comments, loadingComment, errorComment, pagination } = useFetchComments(videoId || "", page, 10);
+  const { videoDetail, comments, loadingComment, errorComment, pagination, refetch } = useFetchComments(videoId || "", page, 10);
   const totalPages = Math.ceil(pagination.total / pagination.page_size);
   const [selected, setSelected] = useState<string[]>([]);
-  
+  // TODO: handle global context sebelum login jadi error ke dashboardnya
+  // TODO_BACKEND: refactor code dan error handling di BE dan FE nya
   const model_predict = () => {
     console.log("ML process");
   };
@@ -51,11 +52,29 @@ export const VideoDetailPage = () => {
         {errorComment && <p className="text-red-500">Error: {errorComment}</p>}
 
         {videoDetail && (
-            <div className="mb-8 bg-gray-800 p-4 rounded shadow">
-            <h2 className="text-xl font-semibold text-blue-300">{videoDetail.title}</h2>
-            <p className="text-gray-300">{videoDetail.description}</p>
-            <p className="text-sm text-gray-500">Dipublikasikan: {new Date(videoDetail.published_at).toLocaleString()}</p>
+          <div className="mb-8 bg-gray-800 p-4 rounded shadow flex flex-row justify-between items-center gap-4">
+            <div className="flex flex-col flex-grow">
+              <h2 className="text-xl font-semibold text-blue-300 hover:underline">
+                <a href={`https://www.youtube.com/watch?v=${videoDetail.video_id}`}>
+                  {videoDetail.title}
+                </a>
+              </h2>
+              <p className="text-gray-300">{videoDetail.description}</p>
+              <p className="text-gray-300">Total Komentar: {pagination.total}</p>
+              <p className="text-sm text-gray-500">
+                Dipublikasikan: {new Date(videoDetail.published_at).toLocaleString()}
+              </p>
             </div>
+            
+            <div className="flex-shrink-0">
+              <button
+                onClick={refetch}
+                className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
+              >
+                Fetch Ulang Komentar
+              </button>
+            </div>
+          </div>
         )}
 
         <CommentToolbar

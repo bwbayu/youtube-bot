@@ -15,9 +15,18 @@ import {
 
 export const DashboardPage = () => {
   const { user, playlistId } = useFetchUser()
-  const { latestVideos, loading: loadingLatest, error: errorLatest, refetch } = useFetchLatestVideos(playlistId || "");
+  const [shouldFetchHistory, setShouldFetchHistory] = useState(false);
+  const { latestVideos, loading: loadingLatest, error: errorLatest, refetch } = useFetchLatestVideos(
+    playlistId || "", 
+    {
+      onSuccess: () => setShouldFetchHistory(true),
+    }
+  );
   const [page, setPage] = useState(1);
-  const { videos, loadingVideos, errorvideos, pagination } = useFetchVideos(playlistId || "", page, 10);
+  const { videos, loadingVideos, errorvideos, pagination } = useFetchVideos(
+    shouldFetchHistory ? (playlistId || "") : "", page, 10,
+  
+  );
   const totalPages = Math.ceil(pagination.total / pagination.page_size);
 
   const handleLogout = async () => {

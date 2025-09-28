@@ -8,7 +8,7 @@ export type VideoFetchResult = {
   error: string;
 };
 
-export function useFetchLatestVideos(playlistId: string) {
+export function useFetchLatestVideos(playlistId: string, options?: { onSuccess?: () => void }) {
   const [latestVideos, setLatestVideos] = useState<VideoFetchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +34,7 @@ export function useFetchLatestVideos(playlistId: string) {
       const data = await res.json();
       setLatestVideos(data);
       setError(null);
+      options?.onSuccess?.();
     } catch (err: unknown) {
         if (err instanceof Error){
             console.error("Fetch video gagal:", err);

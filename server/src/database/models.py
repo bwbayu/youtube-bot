@@ -1,5 +1,5 @@
 # src/database/models.py
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Boolean
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Boolean, Float
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
 from datetime import datetime, timezone
@@ -59,6 +59,8 @@ class Comment(Base):
     published_at = Column(DateTime(timezone=True), nullable=False) # items[i].snippet.topLevelComment[j].snippet.publishedAt
     updated_at = Column(DateTime(timezone=True), nullable=False) # items[i].snippet.topLevelComment[j].snippet.updatedAt
     is_judi = Column(Boolean, default=False)
+    label = Column(Boolean, default=False) # true label of model prediction (for further training)
+    confidence = Column(Float, default=0)
     created_at = Column(DateTime(timezone=True),  default=lambda: datetime.now(timezone.utc), nullable=False)
 
     video = relationship("Video", back_populates="comments")
