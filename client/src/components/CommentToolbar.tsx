@@ -1,25 +1,40 @@
 export const CommentToolbar = ({
   selectedCount,
   onDeleteSelected,
-  onClearSelection
+  onClearSelection,
+  onRunMLDetection
 }: {
   selectedCount: number,
   onDeleteSelected: () => void,
-  onClearSelection: () => void
+  onClearSelection: () => void,
+  onRunMLDetection: () => void
 }) => {
-  if (selectedCount === 0) return null;
-
   return (
-    <div className="bg-white text-black flex items-center justify-between px-4 py-2 shadow mb-4 rounded">
+    <div className="bg-gray-800 text-white font-bold flex items-center justify-between px-4 py-2 shadow mb-4 rounded">
       <div className="text-sm">
-        {selectedCount} selected <button onClick={onClearSelection} className="underline ml-2 text-blue-600">Clear</button>
+        {selectedCount} selected{" "}
+        {selectedCount > 0 && (
+          <button
+            onClick={onClearSelection}
+            className="ml-2 text-blue-600"
+          >
+            Clear
+          </button>
+        )}
       </div>
       <div className="space-x-2">
         <button
+          onClick={onRunMLDetection}
+          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          Run AI Detection
+        </button>
+        <button
           onClick={onDeleteSelected}
           className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+          disabled={selectedCount === 0}
         >
-          Delete
+          Delete Selected
         </button>
       </div>
     </div>

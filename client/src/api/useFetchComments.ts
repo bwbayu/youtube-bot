@@ -23,9 +23,14 @@ export type CommentResponse = {
 export const useFetchComments = (videoId: string, page = 1, page_size = 10) => {
   const [comments, setComments] = useState<CommentResponse[]>([])
   const [videoDetail, setVideoDetail] = useState<VideoResponse | null>(null)
-  const [total, setTotal] = useState(0)
   const [loadingComment, setLoading] = useState(true)
   const [errorComment, setError] = useState<string | null>(null)
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    page_size: 10,
+    has_next: false,
+  })
 
   const fetchData = useCallback(async () => {
     try {
@@ -41,7 +46,12 @@ export const useFetchComments = (videoId: string, page = 1, page_size = 10) => {
       const data = await res.json()
       setVideoDetail(data.videoDetail)
       setComments(data.items)
-      setTotal(data.total)
+      setPagination({
+        total: data.total,
+        page: data.page,
+        page_size: data.page_size,
+        has_next: data.has_next,
+      })
       setError(null) // reset error on success
     } catch (err) {
       setError((err as Error).message)
@@ -54,5 +64,5 @@ export const useFetchComments = (videoId: string, page = 1, page_size = 10) => {
     fetchData()
   }, [fetchData])
 
-  return { comments, videoDetail, total, loadingComment, errorComment }
+  return { comments, videoDetail, loadingComment, errorComment, pagination }
 }

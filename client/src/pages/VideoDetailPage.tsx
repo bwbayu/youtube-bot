@@ -1,17 +1,34 @@
 import { useParams } from "react-router-dom";
 import { useState } from "react";
+
 import { useFetchComments } from "../api/useFetchComments";
+
 import { useUser } from "../context/UserContext";
-import { Navbar } from "../components/Navbar";
-import { CommentCard } from "../components/CommentCard";
+
 import { CommentToolbar } from "../components/CommentToolbar";
+import { CommentCard } from "../components/CommentCard";
+import { Navbar } from "../components/Navbar";
+
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext
+} from "@/components/ui/pagination";
 
 export const VideoDetailPage = () => {
   const { videoId } = useParams();
   const [page, setPage] = useState(1);
   const user = useUser();
-  const { videoDetail, comments, total, loadingComment, errorComment } = useFetchComments(videoId || "", page, 10);
+  const { videoDetail, comments, loadingComment, errorComment, pagination } = useFetchComments(videoId || "", page, 10);
+  const totalPages = Math.ceil(pagination.total / pagination.page_size);
   const [selected, setSelected] = useState<string[]>([]);
+  
+  const model_predict = () => {
+    console.log("ML process");
+  };
 
   const toggleCheckbox = (id: string, checked: boolean) => {
     setSelected(prev => checked ? [...prev, id] : prev.filter(cid => cid !== id));
@@ -45,6 +62,7 @@ export const VideoDetailPage = () => {
             selectedCount={selected.length}
             onDeleteSelected={deleteSelected}
             onClearSelection={() => setSelected([])}
+            onRunMLDetection={model_predict}
         />
 
         <div className="space-y-3">
@@ -59,21 +77,30 @@ export const VideoDetailPage = () => {
             ))}
         </div>
 
-        <div className="flex gap-4 mt-6">
-            <button
-            onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-            className="px-3 py-1 bg-gray-700 rounded"
-            disabled={page === 1}
-            >
-            Prev
-            </button>
-            <span>Halaman {page}/{Math.ceil(total/10)}</span>
-            <button
-            onClick={() => setPage((prev) => prev + 1)}
-            className="px-3 py-1 bg-gray-700 rounded"
-            >
-            Next
-            </button>
+        <div className="pt-5">
+        {totalPages > 1 && (
+            <Pagination>
+              <PaginationContent>
+                {page > 1 && (
+                  <PaginationItem>
+                    <PaginationPrevious href="#" onClick={() => setPage(page - 1)} />
+                  </PaginationItem>
+                )}
+
+                <PaginationItem>
+                  <PaginationLink href="#" isActive>
+                    {page}
+                  </PaginationLink>
+                </PaginationItem>
+
+                {pagination.has_next && (
+                  <PaginationItem>
+                    <PaginationNext href="#" onClick={() => setPage(page + 1)} />
+                  </PaginationItem>
+                )}
+              </PaginationContent>
+            </Pagination>
+          )}
         </div>
       </div>
     </div>

@@ -4,13 +4,22 @@ import { useFetchUser } from "../api/useFetchUser";
 import { useFetchVideos } from "../api/useFetchVideos";
 import { VideoCard } from "../components/VideoCard";
 import { Navbar } from "../components/Navbar";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext
+} from "@/components/ui/pagination";
 
 export const DashboardPage = () => {
   const { user, playlistId } = useFetchUser()
   const { latestVideos, loading: loadingLatest, error: errorLatest, refetch } = useFetchLatestVideos(playlistId || "");
   const [page, setPage] = useState(1);
-  const { videos, loadingVideos, errorvideos } = useFetchVideos(playlistId || "", page, 10);
-  
+  const { videos, loadingVideos, errorvideos, pagination } = useFetchVideos(playlistId || "", page, 10);
+  const totalPages = Math.ceil(pagination.total / pagination.page_size);
+
   const handleLogout = async () => {
     try {
       const res = await fetch("http://localhost:8000/auth/logout", {
@@ -64,23 +73,32 @@ export const DashboardPage = () => {
               <VideoCard key={video.video_id} video={video} />
             ))}
           </div>
+        </div>
 
-          <div className="flex gap-4 mt-6">
-            <button
-              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-              className="px-3 py-1 bg-gray-700 rounded"
-              disabled={page === 1}
-            >
-              Prev
-            </button>
-            <span>Halaman {page}</span>
-            <button
-              onClick={() => setPage((prev) => prev + 1)}
-              className="px-3 py-1 bg-gray-700 rounded"
-            >
-              Next
-            </button>
-          </div>
+        <div className="pt-5">
+        {totalPages > 1 && (
+            <Pagination>
+              <PaginationContent>
+                {page > 1 && (
+                  <PaginationItem>
+                    <PaginationPrevious href="#" onClick={() => setPage(page - 1)} />
+                  </PaginationItem>
+                )}
+
+                <PaginationItem>
+                  <PaginationLink href="#" isActive>
+                    {page}
+                  </PaginationLink>
+                </PaginationItem>
+
+                {pagination.has_next && (
+                  <PaginationItem>
+                    <PaginationNext href="#" onClick={() => setPage(page + 1)} />
+                  </PaginationItem>
+                )}
+              </PaginationContent>
+            </Pagination>
+          )}
         </div>
       </main>
     </div>

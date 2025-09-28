@@ -5,6 +5,12 @@ export const useFetchVideos = (playlist_id: string, page = 1, page_size = 10) =>
   const [videos, setVideos] = useState<VideoResponse[]>([])
   const [loadingVideos, setLoading] = useState(true)
   const [errorvideos, setError] = useState<string | null>(null)
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    page_size: 10,
+    has_next: false,
+  })
 
   const fetchVideos = useCallback(async () => {
     try {
@@ -15,6 +21,12 @@ export const useFetchVideos = (playlist_id: string, page = 1, page_size = 10) =>
       if (!res.ok) throw new Error(`HTTP error ${res.status}`)
       const data = await res.json()
       setVideos(data.items || [])
+      setPagination({
+        total: data.total,
+        page: data.page,
+        page_size: data.page_size,
+        has_next: data.has_next,
+      })
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -26,5 +38,5 @@ export const useFetchVideos = (playlist_id: string, page = 1, page_size = 10) =>
     if (playlist_id) fetchVideos()
   }, [playlist_id, fetchVideos])
 
-  return { videos, loadingVideos, errorvideos, refetch: fetchVideos }
+  return { videos, loadingVideos, errorvideos, refetch: fetchVideos, pagination }
 }
