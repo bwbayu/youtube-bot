@@ -1,13 +1,15 @@
 # src/services/content_services.py
+from src.schemas.comment import CommentCreate, CommentResponse
+from src.schemas.video import VideoResponse
 from src.database.crud_content import *
-from src.schemas.comment import CommentCreate
 
 from dateutil.parser import parse as parse_datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.responses import JSONResponse
 from fastapi import HTTPException
-import httpx, os, logging
 from dotenv import load_dotenv
+import httpx, os, logging
+from typing import List
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -72,7 +74,6 @@ async def fetch_comments(video_id: str, access_token: str, last_fetch: datetime 
                 
                 data = res.json()
                 for item in data.get("items", []):
-                    print("ITEM COMMENT: ", item)
                     comment = item["snippet"]["topLevelComment"]["snippet"]
 
                     # Filter by last_fetch (top-level comment)
@@ -115,8 +116,46 @@ async def fetch_comments(video_id: str, access_token: str, last_fetch: datetime 
                 prev_page_token = next_token
                 params["pageToken"] = next_token
         
-        print("COMMENT DATA: ", comment)
         return comments
     except Exception as e:
         logger.error(f"Error in fetch_comments: {e}", exc_info=True)
         return None
+    
+async def get_videos_handler(db: AsyncSession, playlist_id: str, page: int = 1, limit: int = 10) -> List[VideoResponse]:
+    # get total video
+    total_videos = await get_count_videos(db, playlist_id)
+
+    # get videos data
+    videos_data = await get_videos(db, playlist_id, page, limit)
+    
+    if not videos_data:
+            raise HTTPException(status_code=404, detail="Videos not found")
+    
+    return {
+        "items": videos_data,
+        "total": total_videos,
+        "page": page,
+        "page_size": limit,
+        "has_next": page * limit < total_videos
+    }    
+        
+async def get_video_comments(db: AsyncSession, video_id: str, page: int = 1, limit: int = 10) -> dict:
+    # get video detail
+    video_detail = await get_video_by_id(db, video_id)
+    # get comment count
+    total_comment = await get_count_comments(db, video_id)
+
+    # get comment data
+    comments = await get_comments(db, video_id, page, limit)
+
+    if not comments:
+        raise HTTPException(status_code=404, detail="Comments not found")
+    
+    return {
+        "videoDetail": video_detail,
+        "items": comments,
+        "total": total_comment,
+        "page": page,
+        "page_size": limit,
+        "has_next": page * limit < total_comment
+    }

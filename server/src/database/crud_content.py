@@ -1,7 +1,7 @@
 # src/database/crud_content.py
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, case
+from sqlalchemy import select, case, func
 from datetime import datetime, timezone
 from typing import List
 
@@ -26,7 +26,6 @@ async def insert_video(db: AsyncSession, video_data: VideoCreate) -> Video:
     query = select(Video).filter_by(video_id=video_data.video_id)
     result = await db.execute(query)
     existing = result.scalar_one_or_none()
-    # QUESTION: need upsert ?
     if not existing:
         video = Video(**video_data.model_dump())
         db.add(video)
@@ -45,13 +44,28 @@ async def get_video_by_id(db: AsyncSession, video_id: str):
     result = await db.execute(query)
     return result.scalar_one_or_none()
 
-async def get_videos(db: AsyncSession, playlist_id: str):
+async def get_videos(db: AsyncSession, playlist_id: str, page: int = 1, limit: int = 10):
     """
-    get all video from users (show videos)
+    get all video from users (show videos) with pagination
     """
-    query = select(Video).filter_by(playlist_id=playlist_id)
+    offset = (page - 1) * limit
+    query = (
+        select(Video)
+        .filter_by(playlist_id=playlist_id)
+        .offset(offset)
+        .limit(limit)
+    )
     result = await db.execute(query)
     return result.scalars().all()
+
+async def get_count_videos(db: AsyncSession, playlist_id: str):
+    """
+    get count user videos
+    """
+    count_query = select(func.count()).select_from(Video).filter_by(playlist_id=playlist_id)
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
+    return total
 
 async def update_last_fetch_comment(db: AsyncSession, video_id: str):
     """
@@ -65,13 +79,28 @@ async def update_last_fetch_comment(db: AsyncSession, video_id: str):
         await db.commit()
         await db.refresh(video_data)
 
-async def get_comments(db: AsyncSession, video_id: str):
+async def get_comments(db: AsyncSession, video_id: str, page: int = 1, limit: int = 10):
     """
-    get all comment from video (show comments)
+    get all comment from video (show comments) with pagination
     """
-    query = select(Comment).filter_by(video_id=video_id)
+    offset = (page - 1) * limit
+    query = (
+        select(Comment)
+        .filter_by(video_id=video_id)
+        .offset(offset)
+        .limit(limit)
+    )
     result = await db.execute(query)
     return result.scalars().all()
+
+async def get_count_comments(db: AsyncSession, video_id: str):
+    """
+    get count comment from video
+    """
+    count_query = select(func.count()).select_from(Comment).filter_by(video_id=video_id)
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
+    return total
 
 async def insert_comments(db: AsyncSession, comments: List[CommentCreate]):
     """

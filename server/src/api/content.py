@@ -5,12 +5,19 @@ from src.database.crud_content import (
     insert_comments,
     update_last_fetch_comment,
 )
-from src.services.content_service import fetch_latest_video, fetch_comments, get_user_data
-from src.schemas.video import VideoCreate, VideoFetchSummary
+from src.services.content_service import (
+    fetch_latest_video, 
+    fetch_comments, 
+    get_user_data, 
+    get_videos_handler, 
+    get_video_comments
+)
+from src.schemas.video import VideoCreate, VideoFetchSummary, VideoListResponse
 from src.database.init import get_async_db
 from src.schemas.user import UserResponse
+from src.schemas.comment import CommentListResponse
 
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, Query, Path, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.responses import JSONResponse
 import logging
@@ -90,10 +97,40 @@ async def get_latest_video(
             await insert_comments(db, comments)
             await update_last_fetch_comment(db, video_id)
             results.append(
-                VideoFetchSummary(video_id=video_id, comment_count=len(comments or []))
+                VideoFetchSummary(
+                    video_id=video_id, 
+                    title=stored_video.title,
+                    published_at=stored_video.published_at,
+                    new_comment_count=len(comments or [])
+                    )
             )
         except Exception as e:
             logger.exception("Failed to sync comments for video %s", video_id)
             results.append(VideoFetchSummary(video_id=video_id, error=str(e)))
 
     return results
+
+@router.get("/user_videos", response_model=VideoListResponse)
+async def get_user_videos(
+    db: AsyncSession = Depends(get_async_db),
+    playlist_id: str = "",
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+):
+    if not playlist_id:
+        raise HTTPException(status_code=400, detail="playlist_id is required")
+    
+    return await get_videos_handler(db, playlist_id, page, page_size)
+
+
+@router.get("/video/{video_id}", response_model=CommentListResponse)
+async def get_video_detail(
+    video_id: str = Path(..., description="Video ID"),
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(10, ge=1, le=100, description="Number of comments per page"),
+    db: AsyncSession = Depends(get_async_db)
+):
+    if not video_id:
+        raise HTTPException(status_code=400, detail="video_id is required")
+    # get comment data
+    return await get_video_comments(db, video_id, page, limit)

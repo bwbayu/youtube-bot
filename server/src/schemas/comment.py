@@ -1,6 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel
 from datetime import datetime
+from src.schemas.video import VideoResponse
 
 class CommentBase(BaseModel):
     # comment data for insert and fetch
@@ -29,7 +30,9 @@ class CommentResponse(CommentBase):
 
 class CommentListResponse(BaseModel):
     # list of fetch comment
+    videoDetail: VideoResponse
     items: list[CommentResponse]
     total: int
     page: int
     page_size: int
+    has_next: bool

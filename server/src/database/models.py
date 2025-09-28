@@ -58,7 +58,7 @@ class Comment(Base):
     text = Column(Text, nullable=False) # items[i].snippet.topLevelComment[j].snippet.textDisplay/textOriginal
     published_at = Column(DateTime(timezone=True), nullable=False) # items[i].snippet.topLevelComment[j].snippet.publishedAt
     updated_at = Column(DateTime(timezone=True), nullable=False) # items[i].snippet.topLevelComment[j].snippet.updatedAt
-    is_judi = Column(Boolean, nullable=True)
+    is_judi = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True),  default=lambda: datetime.now(timezone.utc), nullable=False)
 
     video = relationship("Video", back_populates="comments")

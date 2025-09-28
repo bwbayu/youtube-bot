@@ -23,7 +23,9 @@ class VideoResponse(VideoBase):
 
 class VideoFetchSummary(BaseModel):
     video_id: str
-    comment_count: Optional[int] = None
+    title: str
+    published_at: Optional[datetime] = None
+    new_comment_count: Optional[int] = None
     error: Optional[str] = None
 
 class VideoListResponse(BaseModel):
@@ -32,3 +34,4 @@ class VideoListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+    has_next: bool
