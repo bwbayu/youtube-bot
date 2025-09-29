@@ -1,5 +1,11 @@
 # src/services/auth_service.py
-from src.database.crud import save_user, store_refresh_token, delete_refresh_token_by_session, get_refresh_token_by_session, update_session_id
+from src.database.crud import (
+    save_user,
+    store_refresh_token,
+    delete_refresh_token_by_session,
+    get_refresh_token_by_session,
+    update_session_id
+)
 from src.core.session import create_session, delete_session
 from src.core.utils import encrypt_token, decrypt_token
 from src.schemas.user import UserCreate
@@ -45,7 +51,7 @@ async def get_channel_info(access_token: str):
         logger.error(f"Error in get_channel_info: {e}", exc_info=True)
         return None
 
-async def handle_auth_callback(session_data: dict, db):
+async def handle_auth_callback(session_data: dict, db: AsyncSession):
     # Decode ID token
     tokens = session_data["tokens"]
 
@@ -136,24 +142,16 @@ async def delete_session_data(db: AsyncSession, session_id: str, response: Respo
 async def revoke_token(decrypted_token: str) -> bool:
     try:
         async with httpx.AsyncClient() as client:
-            revoke_res = await client.post(
+            res = await client.post(
                 f"https://oauth2.googleapis.com/revoke?token={decrypted_token}",
                 headers={"Content-Type": "application/x-www-form-urlencoded"}
             )
-
-        if revoke_res.status_code == 200:
-            logger.info("Token revoked successfully.")
+        if res.status_code == 200:
             return True
-        else:
-            logger.warning(f"Failed to revoke token: {revoke_res.status_code} - {revoke_res.text}")
-            return False
-
-    except httpx.HTTPError as e:
-        logger.error(f"HTTP error during token revoke: {e}", exc_info=True)
+        logger.warning(f"Revoke failed: {res.status_code} - {res.text}")
         return False
-
     except Exception as e:
-        logger.error(f"Unexpected error during token revoke: {e}", exc_info=True)
+        logger.error("Token revoke error", exc_info=True)
         return False
 
 async def renew_access_token(decrypted_refresh_token: str):
@@ -188,49 +186,30 @@ async def handle_refresh_access_token(db: AsyncSession, session_id: str):
     # TODO_LATER: CHECK FUNCTIONALITY
     # session data not exist
     if not session_id:
-        return JSONResponse({"error": "No session cookie"}, status_code=401)
+        raise HTTPException(status_code=401, detail="No session cookie")
     
     # get refresh token data
     token_data = await get_refresh_token_by_session(db, session_id)
-
     if not token_data or token_data.expires_at < datetime.now():
-        # handle refresn token data doesn't exist
-        return JSONResponse({"error": "Refresh token expired"}, status_code=401)
+        # handle refresh token data doesn't exist
+        raise HTTPException(status_code=401, detail="Refresh token expired")
     
-    try:
-        decrypted_refresh_token = decrypt_token(token_data.refresh_token_encrypted)
-        # request new access token using refresh token
-        new_access_token = await renew_access_token(decrypted_refresh_token)
+    decrypted_refresh_token = decrypt_token(token_data.refresh_token_encrypted)
+    # request new access token using refresh token
+    new_access_token = await renew_access_token(decrypted_refresh_token)
 
-        if not new_access_token:
-            return JSONResponse({"error": "Failed to refresh token"}, status_code=401)
+    if not new_access_token:
+        raise HTTPException(status_code=401, detail="Unable to refresh access token")
         
-        # create new session using new access token
-        new_session_id = await create_session({
-            "user_id": token_data.user_id,
-            "access_token": new_access_token,
-        }, 3600)
+    # create new session using new access token
+    new_session_id = await create_session({
+        "user_id": token_data.user_id,
+        "access_token": new_access_token,
+    }, 3600)
 
-        # update session id in refresh token data
-        success = await update_session_id(db, token_data.user_id, session_id, new_session_id)
-        
-        if not success:
-            # refresh token data doesn't exist
-            logger.error("Failed to update session_id in refresh token store")
-            return JSONResponse({"error": "Failed to update session"}, status_code=500)
-        # create response
-        response = JSONResponse({
-            "message": "Session refreshed"
-        })
-        response.set_cookie(
-            key="session_id",
-            value=new_session_id,
-            httponly=True,
-            secure=False,  # TODO_PROD: True in production
-            max_age=COOKIE_TTL,
-            expires=COOKIE_TTL
-        )
-        return response
-    except Exception as e:
-        logger.error(f"Refresh failed: {e}", exc_info=True)
-        return JSONResponse({"error": "Internal error"}, status_code=500)
+    # update session id in refresh token data
+    success = await update_session_id(db, token_data.user_id, session_id, new_session_id)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to update session")
+    
+    return new_session_id

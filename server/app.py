@@ -6,7 +6,8 @@ from fastapi import FastAPI
 from src.middleware.require_login import RequireLoginMiddleware
 from src.database.init import engine, init_db, AsyncSessionLocal
 from src.database.models import Base
-from src.api import auth, content
+# from src.api import auth, content
+from src.router import auth, content
 
 # lifespan context manager: open and close db connection
 @asynccontextmanager

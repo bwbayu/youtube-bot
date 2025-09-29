@@ -23,7 +23,7 @@ class VideoResponse(VideoBase):
 
 class VideoFetchSummary(BaseModel):
     video_id: str
-    title: str
+    title: Optional[str] = None
     published_at: Optional[datetime] = None
     new_comment_count: Optional[int] = None
     error: Optional[str] = None
