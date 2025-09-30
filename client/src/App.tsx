@@ -7,15 +7,7 @@ import { useFetchUser } from "./api/useFetchUser";
 import { UserContext } from "./context/UserContext";
 
 function App() {
-  const { user, loadingUser } = useFetchUser();
-
-  if (loadingUser) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
-        <p>Loading...</p>
-      </div>
-    );
-  }
+  const { user } = useFetchUser();
 
   if (!user) {
     return (

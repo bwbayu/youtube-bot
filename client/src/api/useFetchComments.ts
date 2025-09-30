@@ -19,6 +19,7 @@ export type CommentResponse = {
     updated_at: Date;
     is_judi: boolean;
     confidence: number;
+    moderation_status: string;
 }
 
 export const useFetchComments = (videoId: string, page = 1, page_size = 10) => {

@@ -58,6 +58,7 @@ class Comment(Base):
     text = Column(Text, nullable=False) # items[i].snippet.topLevelComment[j].snippet.textDisplay/textOriginal
     published_at = Column(DateTime(timezone=True), nullable=False) # items[i].snippet.topLevelComment[j].snippet.publishedAt
     updated_at = Column(DateTime(timezone=True), nullable=False) # items[i].snippet.topLevelComment[j].snippet.updatedAt
+    moderation_status = Column(String, default="published")
     is_judi = Column(Boolean, default=False)
     label = Column(Boolean, default=False) # true label of model prediction (for further training)
     confidence = Column(Float, default=0)

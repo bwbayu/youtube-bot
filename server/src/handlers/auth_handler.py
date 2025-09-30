@@ -23,6 +23,7 @@ COOKIE_TTL = 3600 * 24 * 1
 async def login_handler(request: Request):
     session_id = request.cookies.get("session_id")
     session_data = await get_session(session_id) if session_id else None
+    print(session_data)
     if session_data:
         return RedirectResponse("http://localhost:5173/dashboard")
     

@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { useState } from "react";
 
 import { useFetchComments } from "../api/useFetchComments";
+import { deleteComments } from "../api/deleteComments";
 
 import { useUser } from "../context/UserContext";
 
@@ -25,7 +26,7 @@ export const VideoDetailPage = () => {
   const { videoDetail, comments, loadingComment, errorComment, pagination, refetch } = useFetchComments(videoId || "", page, 10);
   const totalPages = Math.ceil(pagination.total / pagination.page_size);
   const [selected, setSelected] = useState<string[]>([]);
-  // TODO_BACKEND: refactor code dan error handling di BE dan FE nya
+  
   const model_predict = () => {
     console.log("ML process");
   };
@@ -34,12 +35,51 @@ export const VideoDetailPage = () => {
     setSelected(prev => checked ? [...prev, id] : prev.filter(cid => cid !== id));
   };
 
-  const handleDeleteComment = (id: string) => {
-    console.log("Delete comment", id);
+  const handleDeleteComment = async (id: string) => {
+    const confirmDelete = window.confirm("Yakin ingin menghapus komentar ini?");
+    if (!confirmDelete) return;
+
+    try {
+      await deleteComments({
+        comment_ids: [id],
+        moderation_status: "rejected", // atau "rejected" | heldForReview
+      });
+
+      alert("Komentar berhasil dihapus.");
+      refetch();
+    } catch (err) {
+      if (err instanceof Error) {
+        alert(err.message);
+      } else {
+        alert("Gagal menghapus komentar.");
+      }
+    }
   };
 
-  const deleteSelected = () => {
-    console.log("Delete selected:", selected);
+
+  const deleteSelected = async () => {
+    if (selected.length === 0) return;
+
+    const confirmed = window.confirm(`Yakin ingin menghapus ${selected.length} komentar ini?`);
+    if (!confirmed) return;
+
+    try {
+      await deleteComments({
+        comment_ids: selected,
+        moderation_status: "rejected", // atau "rejected" | heldForReview
+        ban_author: false,
+      });
+
+      alert("Komentar berhasil dihapus/moderasi.");
+      setSelected([]); 
+      refetch();          // refetch comment
+    } catch (err) {
+      if (err instanceof Error) {
+        alert(err.message);
+      } else {
+        alert("Gagal menghapus komentar.");
+      }
+    }
   };
 
   return (

@@ -28,7 +28,7 @@ class RequireLoginMiddleware(BaseHTTPMiddleware):
         session_id = request.cookies.get("session_id")
         session_data = None
 
-        if request.url.path in PUBLIC_PATHS and not session_id:
+        if request.url.path in PUBLIC_PATHS:
             return await call_next(request)
                 
         if session_id:

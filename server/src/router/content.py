@@ -5,7 +5,8 @@ from src.handlers.content_handler import (
     get_user_handler,
     fetch_latest_video_handler,
     get_user_videos_handler,
-    get_video_detail_handler
+    get_video_detail_handler,
+    delete_comments_handler
 )
 
 router = APIRouter()
@@ -39,3 +40,10 @@ async def get_video_detail(
     db: AsyncSession = Depends(get_async_db)
 ):
     return await get_video_detail_handler(video_id, page, limit, db)
+
+@router.post("/comments/delete")
+async def delete_comments(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db)
+):
+    return await delete_comments_handler(request, db)

@@ -3,7 +3,8 @@ from fastapi import HTTPException
 from src.database.crud_content import (
     get_user_by_id, get_video_by_id,
     get_count_videos, get_videos,
-    get_comments, get_count_comments
+    get_comments, get_count_comments,
+    update_moderation_status_comment
 )
 from src.schemas.comment import CommentCreate
 from dateutil.parser import parse as parse_datetime
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 API_KEY = os.getenv("GOOGLE_API_KEY")
 BASE_PLAYLIST_URL = "https://www.googleapis.com/youtube/v3/playlistItems"
 BASE_COMMENT_URL = "https://www.googleapis.com/youtube/v3/commentThreads"
+YOUTUBE_MODERATION_URL = "https://www.googleapis.com/youtube/v3/comments/setModerationStatus"
 
 async def get_user_data(db: AsyncSession, user_id: str):
     user = await get_user_by_id(db, user_id)
@@ -52,6 +54,7 @@ async def fetch_comments(video_id: str, access_token: str, last_fetch: datetime 
     async with httpx.AsyncClient() as client:
         while True:
             res = await client.get(BASE_COMMENT_URL, params=params, headers={"Authorization": f"Bearer {access_token}"})
+            print(res)
             if res.status_code == 403:
                 raise HTTPException(403, "YouTube quota exceeded")
             if res.status_code == 404:
@@ -130,3 +133,74 @@ async def get_video_comments(db: AsyncSession, video_id: str, page: int, limit: 
         "page_size": limit,
         "has_next": page * limit < total
     }
+
+def _chunkify(data: List[str], size: int) -> List[List[str]]:
+    return [data[i:i + size] for i in range(0, len(data), size)]
+
+async def update_moderation_status_batch(
+        client: httpx.AsyncClient, 
+        access_token: str,
+        ids: List[str], 
+        moderation_status: str = "heldForReview",
+        ban_author: bool = False
+        ) -> bool:
+        try:
+            params = {
+                "id": ",".join(ids),
+                "moderationStatus": moderation_status,
+            }
+            if moderation_status == "rejected":
+                params["banAuthor"] = "true" if ban_author else "false"
+
+            response: httpx.Response = await client.post(
+                YOUTUBE_MODERATION_URL,
+                params=params,
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+
+            print(response)
+            if response.status_code == 204:
+                logger.info(f"✅ Moderated {len(ids)} comments.")
+                return True
+            else:
+                logger.warning(f"⚠️ Failed batch of {len(ids)} - {response.status_code}: {response.text}")
+                return False
+
+        except Exception as e:
+            logger.error(f"❌ Exception during batch: {e}", exc_info=True)
+            return False
+
+async def delete_comments_by_ids(
+    db: AsyncSession,
+    access_token: str,
+    comment_ids: list[str],
+    moderation_status: str = "heldForReview", # rejected
+    ban_author: bool = False
+) -> int:
+    if not comment_ids:
+        raise HTTPException(status_code=400, detail="Empty comment_ids list")
+
+    success_ids: List[str] = []
+    # Update on YouTube
+    async with httpx.AsyncClient() as client:
+        for chunk in _chunkify(comment_ids, 100):  # Try 100 first
+            if await update_moderation_status_batch(client, access_token, chunk, moderation_status, ban_author):
+                success_ids.extend(chunk)
+            else:
+                for chunk50 in _chunkify(chunk, 50):  # Try 50 fallback
+                    if await update_moderation_status_batch(client, access_token, chunk50, moderation_status, ban_author):
+                        success_ids.extend(chunk50)
+                    else:
+                        for chunk25 in _chunkify(chunk50, 25):  # Final fallback
+                            if await update_moderation_status_batch(client, access_token, chunk25, moderation_status, ban_author):
+                                success_ids.extend(chunk25)
+                            else:
+                                logger.error(f"❌ Final fallback failed for: {chunk25}")
+    
+    if not success_ids:
+        raise HTTPException(status_code=500, detail="All moderation attempts failed.")
+    
+    # Update on DB
+    row_count = await update_moderation_status_comment(db, success_ids, moderation_status)
+
+    return row_count

@@ -8,7 +8,8 @@ from src.services.content_service import (
     fetch_latest_video,
     fetch_comments,
     get_videos_handler,
-    get_video_comments
+    get_video_comments,
+    delete_comments_by_ids
 )
 from src.database.crud_content import (
     get_video_by_id,
@@ -106,4 +107,34 @@ async def get_video_detail_handler(video_id: str, page: int, limit: int, db: Asy
         return JSONResponse(status_code=e.status_code, content={"error": e.detail})
     except Exception as e:
         logger.error("Failed to get video detail", exc_info=True)
+        return JSONResponse(status_code=500, content={"error": "Internal Server Error"})
+    
+async def delete_comments_handler(request: Request, db: AsyncSession):
+    try:
+        body = await request.json()
+        comment_ids = body.get("comment_ids")
+        moderation_status = body.get("moderation_status", "rejected") # rejected | heldForReview
+        ban_author = body.get("ban_author", False)
+
+        # validation comment_ids
+        if not comment_ids or not isinstance(comment_ids, list):
+            return JSONResponse(status_code=400, content={"error": "Invalid comment_ids input"})
+
+        # ban_author can be used when moderation_status is rejected
+        if ban_author and moderation_status != "rejected":
+            return JSONResponse(
+                status_code=400,
+                content={"error": "ban_author can only be used with moderation_status='rejected'"}
+            )
+        
+        # get access token from request state that middleware setting
+        access_token = getattr(request.state, "access_token", None)
+        if not access_token:
+            return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+
+        result = await delete_comments_by_ids(db, access_token, comment_ids, moderation_status, ban_author)
+
+        return JSONResponse(status_code=200, content={"success": True, "updated": result})
+    except Exception as e:
+        logger.error("Failed to delete comments", exc_info=True)
         return JSONResponse(status_code=500, content={"error": "Internal Server Error"})

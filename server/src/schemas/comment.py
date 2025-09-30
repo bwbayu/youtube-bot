@@ -25,6 +25,7 @@ class CommentResponse(CommentBase):
     # fetch comment with classification result
     is_judi: bool
     confidence: float
+    moderation_status: str
 
     class Config:
         from_attributes = True

@@ -1,7 +1,7 @@
 # src/database/crud_content.py
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, case, func
+from sqlalchemy import select, case, func, update
 from datetime import datetime, timezone
 from typing import List
 
@@ -86,7 +86,7 @@ async def get_comments(db: AsyncSession, video_id: str, page: int = 1, limit: in
     offset = (page - 1) * limit
     query = (
         select(Comment)
-        .filter_by(video_id=video_id)
+        .filter_by(video_id=video_id, moderation_status="published")
         .offset(offset)
         .limit(limit)
     )
@@ -97,7 +97,7 @@ async def get_count_comments(db: AsyncSession, video_id: str):
     """
     get count comment from video
     """
-    count_query = select(func.count()).select_from(Comment).filter_by(video_id=video_id)
+    count_query = select(func.count()).select_from(Comment).filter_by(video_id=video_id, moderation_status="published")
     total_result = await db.execute(count_query)
     total = total_result.scalar()
     return total
@@ -135,3 +135,21 @@ async def insert_comments(db: AsyncSession, comments: List[CommentCreate]):
 
     await db.execute(stmt)
     await db.commit()
+
+async def update_moderation_status_comment(
+    db: AsyncSession,
+    list_comment_id: List[str],
+    status: str = 'heldForReview' # rejected
+):
+    if not list_comment_id:
+        return
+        
+    stmt = (
+        update(Comment)
+        .where(Comment.comment_id.in_(list_comment_id))
+        .values(moderation_status=status)
+    )
+    result = await db.execute(stmt)
+    await db.commit()
+
+    return result.rowcount
