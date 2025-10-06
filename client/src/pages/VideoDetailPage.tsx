@@ -34,6 +34,7 @@ export const VideoDetailPage = () => {
   const [selected, setSelected] = useState<string[]>([]);
   
   const model_predict = async () => {
+    // machine learning prediction endpoint
     if (!videoId) return;
 
     try {
@@ -53,7 +54,7 @@ export const VideoDetailPage = () => {
           (c) => c.comment_id
         );
         setSelected(predictedIds); 
-        alert(`ML selesai. Ditemukan ${predictedIds.length} komentar promosi judi.`);
+        alert(`Ditemukan ${predictedIds.length} komentar promosi judi.`);
         refetch();
       } else {
         alert(data.error || "Gagal memproses model.");
@@ -69,6 +70,7 @@ export const VideoDetailPage = () => {
   };
 
   const handleDeleteComment = async (id: string) => {
+    // handle delete comment by comment id
     const confirmDelete = window.confirm("Yakin ingin menghapus komentar ini?");
     if (!confirmDelete) return;
 
@@ -91,6 +93,7 @@ export const VideoDetailPage = () => {
 
 
   const deleteSelected = async () => {
+    // handle delete comment by selected data
     if (selected.length === 0) return;
 
     const confirmed = window.confirm(`Yakin ingin menghapus ${selected.length} komentar ini?`);
