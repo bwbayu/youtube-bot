@@ -3,11 +3,16 @@ import { DashboardPage } from './pages/DashboardPage'
 import { HomePage } from "./pages/HomePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { VideoDetailPage } from "./pages/VideoDetailPage";
+import { LoadingPage } from "./pages/LoadingPage";
 import { useFetchUser } from "./api/useFetchUser";
 import { UserContext } from "./context/UserContext";
 
 function App() {
-  const { user } = useFetchUser();
+  const { user, loadingUser } = useFetchUser();
+
+  if (loadingUser) {
+    return <LoadingPage />;
+  }
 
   if (!user) {
     return (
