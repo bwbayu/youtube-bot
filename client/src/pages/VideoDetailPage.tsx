@@ -19,6 +19,12 @@ import {
   PaginationNext
 } from "@/components/ui/pagination";
 
+type modelPredictResponse = {
+  comment_id: string;
+  is_judi: boolean;
+  confidence: number;
+}
+
 export const VideoDetailPage = () => {
   const { videoId } = useParams();
   const [page, setPage] = useState(1);
@@ -27,8 +33,35 @@ export const VideoDetailPage = () => {
   const totalPages = Math.ceil(pagination.total / pagination.page_size);
   const [selected, setSelected] = useState<string[]>([]);
   
-  const model_predict = () => {
-    console.log("ML process");
+  const model_predict = async () => {
+    if (!videoId) return;
+
+    try {
+      const res = await fetch("http://localhost:8000/content/predict", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ video_id: videoId }),
+      });
+
+      const data = await res.json();
+      console.log(data)
+      if (res.ok) {
+        const predictedIds = (data.predictions as modelPredictResponse[]).map(
+          (c) => c.comment_id
+        );
+        setSelected(predictedIds); 
+        alert(`ML selesai. Ditemukan ${predictedIds.length} komentar promosi judi.`);
+        refetch();
+      } else {
+        alert(data.error || "Gagal memproses model.");
+      }
+    } catch (err) {
+      alert("Terjadi kesalahan saat menjalankan prediksi.");
+      console.error(err);
+    }
   };
 
   const toggleCheckbox = (id: string, checked: boolean) => {
@@ -86,7 +119,7 @@ export const VideoDetailPage = () => {
     <div className="min-h-screen bg-gray-900 text-white w-screen">
       <Navbar user={user} />
       <div className="px-8 py-10">
-        <h1 className="text-3xl font-bold text-green-400 mb-4">Detail Video</h1>
+        {/* <h1 className="text-3xl font-bold text-green-400 mb-4">Detail Video</h1> */}
         {loadingComment && <p>Loading...</p>}
         {errorComment && <p className="text-red-500">Error: {errorComment}</p>}
 

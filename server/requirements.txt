@@ -5,8 +5,10 @@ redis
 httpx
 python-dotenv
 sqlalchemy
-# psycopg2
 pyjwt
 python-jose[cryptography]
 asyncpg
 python-dateutil
+datasets
+accelerate==1.10.1
+transformers==4.57.0

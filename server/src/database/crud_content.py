@@ -3,7 +3,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, case, func, update
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Dict, Any
 
 from src.database.models import User, Video, Comment
 from src.schemas.comment import CommentCreate
@@ -93,6 +93,17 @@ async def get_comments(db: AsyncSession, video_id: str, page: int = 1, limit: in
     result = await db.execute(query)
     return result.scalars().all()
 
+async def get_all_comments(db: AsyncSession, video_id: str):
+    """
+    get all comment based on video_id
+    """
+    query = (
+        select(Comment)
+        .filter_by(video_id=video_id, moderation_status="published")
+    )
+    result = await db.execute(query)
+    return result.scalars().all()
+
 async def get_count_comments(db: AsyncSession, video_id: str):
     """
     get count comment from video
@@ -153,3 +164,26 @@ async def update_moderation_status_comment(
     await db.commit()
 
     return result.rowcount
+
+async def update_comments_prediction_batch(
+    db: AsyncSession,
+    predictions = List[Dict[str, Any]]
+):
+    """
+    update data after model prediction, predictions: list of {comment_id, is_judi, confidence}
+    """
+    if not predictions:
+        return
+
+    for pred in predictions:
+        stmt = (
+            update(Comment)
+            .where(Comment.comment_id == pred["comment_id"])
+            .values(
+                is_judi=pred["is_judi"],
+                confidence=pred["confidence"]
+            )
+        )
+        await db.execute(stmt)
+
+    await db.commit()

@@ -9,7 +9,8 @@ from src.services.content_service import (
     fetch_comments,
     get_videos_handler,
     get_video_comments,
-    delete_comments_by_ids
+    delete_comments_by_ids,
+    predict_comment
 )
 from src.database.crud_content import (
     get_video_by_id,
@@ -96,12 +97,16 @@ async def get_user_videos_handler(db: AsyncSession, playlist_id: str, page: int,
         logger.error("Failed to get user videos", exc_info=True)
         return JSONResponse(status_code=500, content={"error": "Internal Server Error"})
 
-async def get_video_detail_handler(video_id: str, page: int, limit: int, db: AsyncSession):
+async def get_video_detail_handler(request: Request, video_id: str, page: int, limit: int, db: AsyncSession):
+    access_token = getattr(request.state, "access_token", None)
+    if not access_token:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    
     if not video_id:
         return JSONResponse(status_code=400, content={"error": "video_id is required"})
 
     try:
-        data = await get_video_comments(db, video_id, page, limit)
+        data = await get_video_comments(db, video_id, access_token, page, limit)
         return data
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"error": e.detail})
@@ -137,4 +142,20 @@ async def delete_comments_handler(request: Request, db: AsyncSession):
         return JSONResponse(status_code=200, content={"success": True, "updated": result})
     except Exception as e:
         logger.error("Failed to delete comments", exc_info=True)
+        return JSONResponse(status_code=500, content={"error": "Internal Server Error"})
+
+async def inference_model_handler(request: Request, db: AsyncSession):
+    try:
+        body = await request.json()
+        video_id = body.get("video_id")
+
+        # validation video_id
+        if not video_id:
+            return JSONResponse(status_code=400, content={"error": "video_id is required"})
+        
+        comment_data = await predict_comment(db, video_id)
+
+        return comment_data
+    except Exception as e:
+        logger.error("Failed to predict comment", exc_info=True)
         return JSONResponse(status_code=500, content={"error": "Internal Server Error"})

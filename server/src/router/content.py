@@ -6,7 +6,8 @@ from src.handlers.content_handler import (
     fetch_latest_video_handler,
     get_user_videos_handler,
     get_video_detail_handler,
-    delete_comments_handler
+    delete_comments_handler,
+    inference_model_handler
 )
 
 router = APIRouter()
@@ -34,12 +35,13 @@ async def get_user_videos(
 
 @router.get("/video/{video_id}")
 async def get_video_detail(
+    request: Request,
     video_id: str = Path(...),
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
     db: AsyncSession = Depends(get_async_db)
 ):
-    return await get_video_detail_handler(video_id, page, limit, db)
+    return await get_video_detail_handler(request, video_id, page, limit, db)
 
 @router.post("/comments/delete")
 async def delete_comments(
@@ -47,3 +49,10 @@ async def delete_comments(
     db: AsyncSession = Depends(get_async_db)
 ):
     return await delete_comments_handler(request, db)
+
+@router.post("/predict")
+async def inference_model(
+    request: Request,
+    db: AsyncSession = Depends(get_async_db)
+):
+    return await inference_model_handler(request, db)

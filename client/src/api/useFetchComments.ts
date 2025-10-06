@@ -40,7 +40,10 @@ export const useFetchComments = (videoId: string, page = 1, page_size = 10) => {
 
       const res = await fetch(
         `http://localhost:8000/content/video/${videoId}?page=${page}&limit=${page_size}`,
-        { credentials: "include" }
+        {
+          method: 'GET',
+          credentials: "include" 
+        }
       )
 
       if (!res.ok) throw new Error(`HTTP error ${res.status}`)

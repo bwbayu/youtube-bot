@@ -56,9 +56,9 @@ export const DashboardPage = () => {
       <Navbar user={user} onLogout={handleLogout} />
 
       <main className="px-8 py-16">
-        <h1 className="text-4xl font-bold text-green-400 mb-4">Dashboard</h1>
+        {/* <h1 className="text-4xl font-bold text-green-400 mb-4">Dashboard</h1> */}
         {/* Latest Videos */}
-        <div className="mt-10">
+        <div className="mt-0">
           <h2 className="text-2xl font-semibold text-blue-400 mb-4">Video Terbaru</h2>
           {loadingLatest && <p>Mengambil video terbaru...</p>}
           {errorLatest && <p className="text-red-500">Error: {errorLatest}</p>}
