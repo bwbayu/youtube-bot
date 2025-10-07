@@ -1,69 +1,35 @@
-# React + TypeScript + Vite
+# Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Overview
+The client is a React Vite-powered single-page application that surfaces moderation insights from the Bot Judol platform. It handles authentication, displays channel and video analytics, and exposes comment-level moderation workflows.
 
-Currently, two official plugins are available:
+## Features
+- Google OAuth login via `@react-oauth/google` with secure session cookies provided by the FastAPI backend.
+- Dashboard that fetches the latest playlist uploads and historical video catalog, including pagination controls.
+- Video detail workspace with comment filtering, IndoBERT prediction triggers, and bulk delete actions.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Key Pages
+- `HomePage.tsx` is entrypoint when user first open the web
+- `DashboardPage.tsx` fetches playlist metadata, latest uploads, and the paginated video history for the signed-in channel.
+- `VideoDetailPage.tsx` shows video metadata, comment streams, prediction results, and moderation tools.
+- `LoadingPage.tsx` blocks the app until access tokens refresh and route guards settle.
+- `NotFoundPage.tsx` provides a fallback route for unknown URLs.
 
-## Expanding the ESLint configuration
+## Repository Layout
+- `src/api/` React hooks and helpers for calling FastAPI endpoints (videos, comments, moderation actions).
+- `src/components/` shared UI primitives such as navigation, comment cards, and bulk action toolbars.
+- `src/context/` React context for authenticated user state and playlist metadata.
+- `src/lib/` utility helpers for formatting and display logic.
+- `src/pages/` route-level components registered in `App.tsx`.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Environment Variables
+- `VITE_GOOGLE_CLIENT_ID` OAuth 2.0 client ID (web application) from Google Cloud.
+- `VITE_GOOGLE_CLIENT_SECRET` Matching client secret used during the handshake with the backend.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Copy `client/.env.example` to `client/.env` and fill in both values before starting the dev server.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Local Development
+1. Install dependencies: `npm install` (or `pnpm install`).
+2. Start the Vite dev server: `npm run dev`.
+3. Visit http://localhost:5173 and sign in with a Google account that has access to the configured YouTube channel.
+4. Keep the FastAPI backend running on http://localhost:8000 so API calls succeed.

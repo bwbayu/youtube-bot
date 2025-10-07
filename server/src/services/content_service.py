@@ -78,7 +78,6 @@ async def fetch_comments(video_id: str, access_token: str, last_fetch: datetime 
     async with httpx.AsyncClient() as client:
         while True:
             res = await client.get(BASE_COMMENT_URL, params=params, headers={"Authorization": f"Bearer {access_token}"})
-            print(res)
             if res.status_code == 403:
                 raise HTTPException(403, "YouTube quota exceeded")
             if res.status_code == 404:
@@ -187,7 +186,6 @@ async def update_moderation_status_batch(
                 headers={"Authorization": f"Bearer {access_token}"}
             )
 
-            print(response)
             if response.status_code == 204:
                 logger.info(f"✅ Moderated {len(ids)} comments.")
                 return True
