@@ -1,6 +1,6 @@
 # Bot Judol
 ## Demo
-
+[Watch Demo Video](https://www.youtube.com/watch?v=y13QeAKSAXA)
 
 ## Overview
 Bot Judol is a full-stack toolkit for moderating YouTube comments, specifically targeting online gambling promotion. It works similarly to YouTube Studio but is enhanced with AI-powered classification, allowing creators to delete spammy comments in just two clicks, run the AI and delete the flagged content.
