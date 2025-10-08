@@ -59,8 +59,8 @@ export const DashboardPage = () => {
         {/* <h1 className="text-4xl font-bold text-green-400 mb-4">Dashboard</h1> */}
         {/* Latest Videos */}
         <div className="mt-0">
-          <h2 className="text-2xl font-semibold text-blue-400 mb-4">Video Terbaru</h2>
-          {loadingLatest && <p>Mengambil video terbaru...</p>}
+          <h2 className="text-2xl font-semibold text-blue-400 mb-4">Latest Video</h2>
+          {loadingLatest && <p>Fetch new video...</p>}
           {errorLatest && <p className="text-red-500">Error: {errorLatest}</p>}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {latestVideos.map((video) => (
@@ -68,13 +68,13 @@ export const DashboardPage = () => {
             ))}
           </div>
           <button onClick={refetch} className="mt-4 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">
-            Fetch Ulang Komentar
+            Fetch Comments
           </button>
         </div>
 
         {/* History Videos */}
         <div className="mt-12">
-          <h2 className="text-2xl font-semibold text-yellow-400 mb-4">Riwayat Video</h2>
+          <h2 className="text-2xl font-semibold text-yellow-400 mb-4">History</h2>
           {loadingVideos && <p>Loading videos...</p>}
           {errorvideos && <p className="text-red-500">Error: {errorvideos}</p>}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

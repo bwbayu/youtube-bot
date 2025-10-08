@@ -12,6 +12,9 @@ type DeleteCommentsResponse = {
 export async function deleteComments(
   payload: DeleteCommentsPayload
 ): Promise<DeleteCommentsResponse> {
+  /**
+   * 
+   */
   const res = await fetch("http://localhost:8000/content/comments/delete", {
     method: "POST",
     headers: {
@@ -26,6 +29,7 @@ export async function deleteComments(
   });
 
   if (!res.ok) {
+    // fallback when response status code is not 200
     const err = await res.json();
     throw new Error(err.error || "Failed to delete comments");
   }

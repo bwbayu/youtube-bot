@@ -11,6 +11,9 @@ export type User = {
 }
 
 export const useFetchUser = () => {
+  /**
+   * 
+   */
   const [user, setUser] = useState<User | null>(null)
   const [playlistId, setPlaylistId] = useState<string | null>(null)
   const [loadingUser, setLoading] = useState(true)
@@ -19,6 +22,11 @@ export const useFetchUser = () => {
   const navigate = useNavigate();
 
   const fetchUser = useCallback(async () => {
+    /**
+     * useCallback is used to memoize the function so it won't be re-created on every render.
+     * In React, functions are recreated on each render, which can trigger useEffect repeatedly.
+     * useCallback helps "freeze" the function reference, keeping it the same as long as dependencies don't change.
+     */
     try {
       const res = await fetch("http://localhost:8000/content/users", {
         method: "GET",

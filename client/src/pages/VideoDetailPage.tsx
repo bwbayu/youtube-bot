@@ -137,7 +137,7 @@ export const VideoDetailPage = () => {
               <p className="text-gray-300">{videoDetail.description}</p>
               <p className="text-gray-300">Total Komentar: {pagination.total}</p>
               <p className="text-sm text-gray-500">
-                Dipublikasikan: {new Date(videoDetail.published_at).toLocaleString()}
+                Published: {new Date(videoDetail.published_at).toLocaleString()}
               </p>
             </div>
             
@@ -146,7 +146,7 @@ export const VideoDetailPage = () => {
                 onClick={refetch}
                 className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
               >
-                Fetch Ulang Komentar
+                Fetch Comments
               </button>
             </div>
           </div>

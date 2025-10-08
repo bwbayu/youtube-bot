@@ -23,6 +23,9 @@ export type CommentResponse = {
 }
 
 export const useFetchComments = (videoId: string, page = 1, page_size = 10) => {
+  /**
+   * 
+   */
   const [comments, setComments] = useState<CommentResponse[]>([])
   const [videoDetail, setVideoDetail] = useState<VideoResponse | null>(null)
   const [loadingComment, setLoading] = useState(true)
@@ -35,6 +38,11 @@ export const useFetchComments = (videoId: string, page = 1, page_size = 10) => {
   })
 
   const fetchData = useCallback(async () => {
+    /**
+     * useCallback is used to memoize the function so it won't be re-created on every render.
+     * In React, functions are recreated on each render, which can trigger useEffect repeatedly.
+     * useCallback helps "freeze" the function reference, keeping it the same as long as dependencies don't change.
+     */
     try {
       setLoading(true)
 

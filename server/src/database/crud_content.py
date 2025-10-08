@@ -13,15 +13,13 @@ async def get_user_by_id(db: AsyncSession, user_id: str):
     """
     Get user by user id
     """
-    # QUESTION: what if user doesn't exist
-    # ANSWER : handle None in handler
     query = select(User).filter_by(user_id=user_id)
     result = await db.execute(query)
     return result.scalar_one_or_none()
 
 async def insert_video(db: AsyncSession, video_data: VideoCreate) -> Video:
     """
-    Insert one fetched video
+    Add new video data if not available, check based on video_id
     """
     query = select(Video).filter_by(video_id=video_data.video_id)
     result = await db.execute(query)
@@ -73,7 +71,7 @@ async def update_last_fetch_comment(db: AsyncSession, video_id: str):
     """
     # get video data
     video_data = await get_video_by_id(db, video_id)
-    # QUESTION: what if video data doesn't exist
+    
     if video_data:
         video_data.last_fetch_comment = datetime.now(timezone.utc)
         await db.commit()
@@ -106,7 +104,7 @@ async def get_all_comments(db: AsyncSession, video_id: str):
 
 async def get_count_comments(db: AsyncSession, video_id: str):
     """
-    get count comment from video
+    get count comment from video for all comment with moderation_status is published
     """
     count_query = select(func.count()).select_from(Comment).filter_by(video_id=video_id, moderation_status="published")
     total_result = await db.execute(count_query)
@@ -115,7 +113,8 @@ async def get_count_comments(db: AsyncSession, video_id: str):
 
 async def insert_comments(db: AsyncSession, comments: List[CommentCreate]):
     """
-    insert comments
+    insert bulk comments and replace existing one of either text/author_display_name changing 
+    because these two data that probably contain gambling promotion related
     """
     if not comments:
         return
@@ -152,6 +151,9 @@ async def update_moderation_status_comment(
     list_comment_id: List[str],
     status: str = 'heldForReview' # rejected
 ):
+    """
+    update bulk of moderation_status data in comment
+    """
     if not list_comment_id:
         return
         

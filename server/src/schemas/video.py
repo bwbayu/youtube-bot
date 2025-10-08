@@ -22,6 +22,7 @@ class VideoResponse(VideoBase):
         from_attributes = True
 
 class VideoFetchSummary(BaseModel):
+    # summary video data, show in latest video in dashboard
     video_id: str
     title: Optional[str] = None
     published_at: Optional[datetime] = None

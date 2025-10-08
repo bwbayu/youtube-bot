@@ -16,7 +16,7 @@ from src.core.utils import decrypt_token
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-
+# define some url that will be skip by middleware such as health monitoring and login
 PUBLIC_PATHS = ["/health",
                 "/auth/login", "/auth/callback", 
                 ]
@@ -29,6 +29,7 @@ class RequireLoginMiddleware(BaseHTTPMiddleware):
         session_data = None
 
         if request.url.path in PUBLIC_PATHS:
+            # skip url if it's public url
             return await call_next(request)
                 
         if session_id:
@@ -47,9 +48,11 @@ class RequireLoginMiddleware(BaseHTTPMiddleware):
             # Session data not found, try to use refresh token from DB
             try:
                 async for db in get_async_db():
+                    # get refresh token data
                     token_data = await get_refresh_token_by_session(db, session_id)
                     
                     if not token_data or token_data.expires_at < datetime.now():
+                        # fallback when refresh token data is already expired
                         return JSONResponse({"detail": "Unauthorized"}, status_code=401)
                     
                     # request new access token using refresh token
@@ -62,6 +65,7 @@ class RequireLoginMiddleware(BaseHTTPMiddleware):
                         "access_token": new_access_token
                     }, 3600)
 
+                    # update session id in refresh token data
                     success = await update_session_id(db, token_data.user_id, session_id, new_session_id)
 
                     if not success:
@@ -94,6 +98,7 @@ class RequireLoginMiddleware(BaseHTTPMiddleware):
         """
         try:
             async with httpx.AsyncClient() as client:
+                # request to google to get new access token using refresh token data
                 response = await client.post("https://oauth2.googleapis.com/token", data={
                     "client_id": os.getenv("GOOGLE_CLIENT_ID"),
                     "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),

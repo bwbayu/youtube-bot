@@ -43,13 +43,16 @@ async def update_session_id(db: AsyncSession, user_id: str, old_session_id: str,
     """
     update session id on refresh token table when session is expired
     """
+    # get refresh token data by session id and user id
     stmt = select(RefreshToken).filter_by(user_id=user_id, session_id=old_session_id)
     result = await db.execute(stmt)
     token_data = result.scalar_one_or_none()
 
     if not token_data:
+        # fallback when token data isn't available/not found
         return False
 
+    # if token data is available then update the session_id and expires_at
     token_data.session_id = new_session_id
     token_data.expires_at = datetime.now() + timedelta(days=1)
     await db.commit()
@@ -65,7 +68,7 @@ async def get_refresh_token_by_session(db: AsyncSession, session_id: str):
 
 async def delete_refresh_token_by_session(db: AsyncSession, session_id: str):
     """
-    delete refresh token data by session id when user logout
+    delete refresh token data by session id when user logged out
     """
     stmt = select(RefreshToken).filter_by(session_id=session_id)
     result = await db.execute(stmt)

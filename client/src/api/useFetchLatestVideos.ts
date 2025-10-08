@@ -9,11 +9,19 @@ export type VideoFetchResult = {
 };
 
 export function useFetchLatestVideos(playlistId: string, options?: { onSuccess?: () => void }) {
+  /**
+   * 
+   */
   const [latestVideos, setLatestVideos] = useState<VideoFetchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchLatestVideos = useCallback(async () => {
+    /**
+     * useCallback is used to memoize the function so it won't be re-created on every render.
+     * In React, functions are recreated on each render, which can trigger useEffect repeatedly.
+     * useCallback helps "freeze" the function reference, keeping it the same as long as dependencies don't change.
+     */
     if (!playlistId) return;
 
     try {

@@ -25,21 +25,29 @@ logger = logging.getLogger(__name__)
 COOKIE_TTL = 3600 * 24 * 1
 
 async def get_channel_info(access_token: str):
+    """
+    service to get channel info using access token
+    """
     try:
         async with httpx.AsyncClient() as client:
+            # request to get channel data to google
             response = await client.get(
                 url='https://www.googleapis.com/youtube/v3/channels?part=snippet,contentDetails&mine=true',
                 headers={"Authorization": f"Bearer {access_token}"}
             )
 
             if response.status_code != 200:
+                # fallback when response status code isn't 200
                 logger.warning(f"Failed to get channel info: {response.text}")
                 return None
 
+            # get data
             items = response.json().get("items", [])
             if not items:
+                # fallback when data isn't available
                 return None
 
+            # return needed data from channel
             item = items[0]
             return {
                 "channel_id": item.get("id"),
@@ -52,11 +60,16 @@ async def get_channel_info(access_token: str):
         return None
 
 async def handle_auth_callback(session_data: dict, db: AsyncSession):
-    # Decode ID token
+    """
+    handle auth from google if token data is already available
+    """
+    # get token data
     tokens = session_data["tokens"]
 
     try:
+        # decode token id 
         user_decode = jwt.decode(tokens['id_token'], options={"verify_signature": False})
+        # store user info after decode
         user_info = {
             "user_id": user_decode["sub"],
             "email": user_decode["email"],
@@ -66,7 +79,7 @@ async def handle_auth_callback(session_data: dict, db: AsyncSession):
         logger.error(f"Failed to decode ID token: {e}", exc_info=True)
         raise HTTPException(status_code=400, detail="Invalid ID token")
 
-    # Create Redis session
+    # Create Redis session that contain access token
     try:
         session_id = await create_session({
             "user_id": user_info['user_id'],
@@ -85,12 +98,13 @@ async def handle_auth_callback(session_data: dict, db: AsyncSession):
         raise HTTPException(status_code=500, detail="Invalid channel info")
     
     try:
+        # insert user data to postgresql
         await save_user(db, user_data)
     except Exception as e:
         logger.error(f"Failed to save user: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to save user")
     
-    # Store refresh token
+    # Store refresh token to postgresql
     try:
         refresh_token_data = {
             "session_id": session_id,
@@ -104,10 +118,12 @@ async def handle_auth_callback(session_data: dict, db: AsyncSession):
         logger.error(f"Failed to store refresh token: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to store refresh token")
 
-
     return session_id, user_data
 
 async def delete_session_data(db: AsyncSession, session_id: str, response: Response):
+    """
+    service to delete session data when user logged out
+    """
     try:
         # delete session in redis
         await delete_session(session_id)
@@ -140,14 +156,20 @@ async def delete_session_data(db: AsyncSession, session_id: str, response: Respo
         return False, f"Logout failed due to internal error: {str(e)}"
             
 async def revoke_token(decrypted_token: str) -> bool:
+    """
+    service to revoke refresh token when user logged out
+    """
     try:
         async with httpx.AsyncClient() as client:
+            # request revoke refresh token to google
             res = await client.post(
                 f"https://oauth2.googleapis.com/revoke?token={decrypted_token}",
                 headers={"Content-Type": "application/x-www-form-urlencoded"}
             )
         if res.status_code == 200:
             return True
+        
+        # fallback when revoke failed
         logger.warning(f"Revoke failed: {res.status_code} - {res.text}")
         return False
     except Exception as e:
@@ -155,8 +177,12 @@ async def revoke_token(decrypted_token: str) -> bool:
         return False
 
 async def renew_access_token(decrypted_refresh_token: str):
+    """
+    service to renew access token using refresh token, if refresh token haven't expired
+    """
     try:
         async with httpx.AsyncClient() as client:
+            # request new access token to google using refresh token
             token_res = await client.post(
                 "https://oauth2.googleapis.com/token",
                 data={
@@ -169,9 +195,11 @@ async def renew_access_token(decrypted_refresh_token: str):
             )
 
         if token_res.status_code != 200:
+            # fallback when response status code isn't 200
             logger.warning(f"Failed to refresh access token: {token_res.text}")
             return None
 
+        # return access token
         return token_res.json().get("access_token")
 
     except httpx.HTTPError as e:
